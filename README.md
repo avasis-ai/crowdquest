@@ -117,6 +117,7 @@ worker/                      vinext Cloudflare Worker entry point
 - [Unified OpenAPI contract](openapi/crowdquest.openapi.json)
 - [Four-minute demo script](docs/DEMO_SCRIPT.md)
 - [Form-ready submission copy](docs/SUBMISSION_COPY.md)
+- [VPS master activation prompt](deploy/VPS_MASTER_ACTIVATION_PROMPT.md)
 - [Dual-submission checklist](docs/SUBMISSION.md)
 - [Third-party notices](THIRD_PARTY_NOTICES.md)
 

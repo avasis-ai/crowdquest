@@ -62,6 +62,13 @@ materialize_optional_parameter() {
     fetch_parameter "$parameter_name" "$destination"
     return
   fi
+  # A one-time activation helper may have materialized this optional secret
+  # directly into the root-only secrets directory. Preserve a non-empty value
+  # when no Parameter Store name is configured.
+  if [ -s "$destination" ]; then
+    chmod 0444 "$destination"
+    return
+  fi
   temporary_file=$(mktemp "${SECRETS_DIR}/.secret.XXXXXX")
   chmod 0444 "$temporary_file"
   mv -f "$temporary_file" "$destination"
