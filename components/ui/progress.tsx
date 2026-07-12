@@ -6,10 +6,15 @@ import { cn } from "@/lib/utils";
 
 function Progress({ className, value = 0, ...props }: React.ComponentProps<typeof ProgressPrimitive.Root>) {
   return (
-    <ProgressPrimitive.Root data-slot="progress" className={cn("relative h-1.5 w-full overflow-hidden rounded-full bg-white/[.07]", className)} {...props}>
+    <ProgressPrimitive.Root
+      data-slot="progress"
+      className={cn("relative h-1.5 w-full overflow-hidden rounded-full bg-white/[.08]", className)}
+      value={value}
+      {...props}
+    >
       <ProgressPrimitive.Indicator
         data-slot="progress-indicator"
-        className="h-full w-full origin-left rounded-full bg-[var(--lime)] transition-transform duration-500"
+        className="h-full w-full origin-left rounded-full bg-[var(--signal)] transition-transform duration-500 motion-reduce:transition-none"
         style={{ transform: `translateX(-${100 - Math.min(100, Math.max(0, value ?? 0))}%)` }}
       />
     </ProgressPrimitive.Root>

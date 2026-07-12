@@ -37,7 +37,7 @@ export const events: MatchEvent[] = [
     minute: 0,
     minuteLabel: "00′",
     title: "Replay ready",
-    detail: "The host agent has opened the first live quest.",
+    detail: "The replay has opened the first deterministic quest.",
     kind: "kickoff",
     homeScore: 0,
     awayScore: 0,
@@ -92,7 +92,7 @@ export const events: MatchEvent[] = [
     minute: 90,
     minuteLabel: "FT",
     title: "France advance",
-    detail: "Final score verified. The bounty board is now settled.",
+    detail: "Final replay state loaded. The demo board is now settled.",
     kind: "final",
     homeScore: 2,
     awayScore: 0,
@@ -157,7 +157,7 @@ export const quests: Quest[] = [
     id: "final-margin",
     opensAtEvent: 4,
     prompt: "How does this match finish?",
-    context: "One final quest. The result is settled only from the verified feed.",
+    context: "One final quest. The result settles from the configured fixture source.",
     choices: [
       { id: "two-plus", label: "France by 2+", hint: "Current margin holds" },
       { id: "one", label: "France by 1", hint: "Morocco pull one back" },
@@ -180,14 +180,14 @@ export const toolTrace = [
   {
     name: "TxLINE",
     role: "Match truth",
-    detail: "Fixture, scores and StablePrice updates",
+    detail: "Fixture, scores and StablePrice updates through the configured adapter",
     state: "connected",
   },
   {
     name: "Host agent",
     role: "Quest director",
     detail: "Chooses a safe challenge from match state",
-    state: "running",
+    state: "configured",
   },
   {
     name: "Bounty engine",

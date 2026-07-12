@@ -9,7 +9,7 @@ export const fixture = {
 };
 
 export const replayEvents: MatchEvent[] = [
-  { id: "kickoff", minute: 0, minuteLabel: "00′", title: "Replay ready", detail: "The host agent has opened the first live quest.", kind: "kickoff", homeScore: 0, awayScore: 0, marketHome: 63 },
+  { id: "kickoff", minute: 0, minuteLabel: "00′", title: "Replay ready", detail: "The replay has opened the first deterministic quest.", kind: "kickoff", homeScore: 0, awayScore: 0, marketHome: 63 },
   { id: "penalty-save", minute: 28, minuteLabel: "28′", title: "Penalty saved", detail: "Morocco survive the biggest chance of the first half.", kind: "chance", homeScore: 0, awayScore: 0, marketHome: 58 },
   { id: "halftime", minute: 45, minuteLabel: "HT", title: "Level at the break", detail: "France have the pressure; Morocco still have the clean sheet.", kind: "break", homeScore: 0, awayScore: 0, marketHome: 61 },
   { id: "france-opener", minute: 60, minuteLabel: "60′", title: "France break through", detail: "The opener moves the market and closes the third quest.", kind: "goal", homeScore: 1, awayScore: 0, marketHome: 88 },

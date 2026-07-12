@@ -36,7 +36,7 @@ The included France–Morocco fixture is a scripted historical demonstration, so
 | Local fallback | The browser remains playable if the orchestrator or TxLINE is unavailable |
 | Reward boundary | Capped payout-intent metadata only; no signer, transfer, or completed payout |
 | Polar | Optional outbound checkout link for the commercial private-room concept; no subscription lifecycle is implemented |
-| Proof view | Product-level decision receipts and policy explanation; not a Solana proof verifier |
+| Receipts view | Product-level decision receipts and policy explanation; not a Solana proof verifier |
 
 See [TxLINE integration](docs/TXLINE_INTEGRATION.md) for the precise connected/replay behavior and [Security](docs/SECURITY.md) for the trust boundary.
 
