@@ -1,0 +1,6 @@
+# Import this snippet into the existing host Caddy configuration after setting
+# CROWDQUEST_DOMAIN and CROWDQUEST_LOOPBACK_PORT in the Caddy service environment.
+{$CROWDQUEST_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:{$CROWDQUEST_LOOPBACK_PORT}
+}

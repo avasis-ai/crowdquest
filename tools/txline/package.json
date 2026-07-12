@@ -1,0 +1,16 @@
+{
+  "name": "@crowdquest/txline-activation",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.13.0" },
+  "scripts": {
+    "activate": "node activate-devnet.mjs"
+  },
+  "dependencies": {
+    "@coral-xyz/anchor": "0.32.1",
+    "@solana/spl-token": "0.4.12",
+    "@solana/web3.js": "1.98.4",
+    "tweetnacl": "1.0.3"
+  }
+}

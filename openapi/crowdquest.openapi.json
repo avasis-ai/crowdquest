@@ -1,0 +1,356 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "CrowdQuest Unified API",
+    "version": "0.1.0",
+    "description": "Public product-state API for CrowdQuest rooms. TxLINE credentials and raw provider payloads never cross this boundary."
+  },
+  "servers": [
+    { "url": "/", "description": "Same-origin production gateway" },
+    { "url": "http://localhost:8788", "description": "Local orchestrator" }
+  ],
+  "tags": [
+    { "name": "Health" },
+    { "name": "Source" },
+    { "name": "Rooms" },
+    { "name": "Operations" }
+  ],
+  "paths": {
+    "/healthz": {
+      "get": {
+        "tags": ["Health"],
+        "operationId": "getHealth",
+        "summary": "Read service health",
+        "responses": {
+          "200": {
+            "description": "Service is ready",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Health" } } }
+          }
+        }
+      }
+    },
+    "/v1/source": {
+      "get": {
+        "tags": ["Source"],
+        "operationId": "getSourceStatus",
+        "summary": "Read the honest TxLINE/replay source state",
+        "responses": {
+          "200": {
+            "description": "Current source status",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SourceStatus" } } }
+          }
+        }
+      }
+    },
+    "/v1/sessions": {
+      "post": {
+        "tags": ["Rooms"],
+        "operationId": "createSession",
+        "summary": "Create a guest match-room session",
+        "requestBody": {
+          "required": false,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateSessionInput" } } }
+        },
+        "responses": {
+          "201": {
+            "description": "Session created",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RoomSnapshot" } } }
+          },
+          "400": { "$ref": "#/components/responses/InvalidRequest" }
+        }
+      }
+    },
+    "/v1/rooms/{sessionId}": {
+      "parameters": [{ "$ref": "#/components/parameters/SessionId" }],
+      "get": {
+        "tags": ["Rooms"],
+        "operationId": "getRoom",
+        "summary": "Read a room snapshot",
+        "responses": {
+          "200": {
+            "description": "Current room state",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RoomSnapshot" } } }
+          },
+          "404": { "$ref": "#/components/responses/SessionNotFound" }
+        }
+      }
+    },
+    "/v1/rooms/{sessionId}/answers": {
+      "parameters": [{ "$ref": "#/components/parameters/SessionId" }],
+      "post": {
+        "tags": ["Rooms"],
+        "operationId": "submitAnswer",
+        "summary": "Settle one answer against the active quest",
+        "description": "questId binds the request to the visible quest and rejects delayed or duplicate submissions after the room advances.",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AnswerInput" } } }
+        },
+        "responses": {
+          "200": {
+            "description": "Answer settled and room advanced",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AnswerResponse" } } }
+          },
+          "400": { "$ref": "#/components/responses/InvalidRequest" },
+          "404": { "$ref": "#/components/responses/SessionNotFound" },
+          "409": {
+            "description": "Room finished or quest no longer active",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+          }
+        }
+      }
+    },
+    "/v1/rooms/{sessionId}/reset": {
+      "parameters": [{ "$ref": "#/components/parameters/SessionId" }],
+      "post": {
+        "tags": ["Rooms"],
+        "operationId": "resetRoom",
+        "summary": "Reset a demonstration room",
+        "responses": {
+          "200": {
+            "description": "Reset room state",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RoomSnapshot" } } }
+          },
+          "404": { "$ref": "#/components/responses/SessionNotFound" }
+        }
+      }
+    },
+    "/v1/admin/txline/refresh": {
+      "post": {
+        "tags": ["Operations"],
+        "operationId": "refreshTxlineProjection",
+        "summary": "Refresh the fixture-scoped TxLINE projection",
+        "security": [{ "adminBearer": [] }],
+        "responses": {
+          "200": {
+            "description": "Projection refreshed",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RefreshResult" } } }
+          },
+          "401": {
+            "description": "Admin token missing or invalid",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+          },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "adminBearer": { "type": "http", "scheme": "bearer", "bearerFormat": "opaque admin token" }
+    },
+    "parameters": {
+      "SessionId": {
+        "name": "sessionId",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "format": "uuid" }
+      }
+    },
+    "responses": {
+      "InvalidRequest": {
+        "description": "Input failed validation",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+      },
+      "SessionNotFound": {
+        "description": "Session was not found",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+      },
+      "InternalError": {
+        "description": "Unexpected server error",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+      }
+    },
+    "schemas": {
+      "Health": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "service", "txlineConfigured", "time"],
+        "properties": {
+          "status": { "const": "ok" },
+          "service": { "const": "crowdquest-orchestrator" },
+          "txlineConfigured": { "type": "boolean" },
+          "time": { "type": "string", "format": "date-time" }
+        }
+      },
+      "SourceStatus": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["provider", "mode", "connected", "fixtureId", "lastCheckedAt", "endpoints", "normalizedEvents", "authoritativeQuests", "streaming"],
+        "properties": {
+          "provider": { "const": "TxLINE" },
+          "mode": { "type": "string", "enum": ["live", "replay"] },
+          "connected": { "type": "boolean" },
+          "fixtureId": { "type": "integer", "minimum": 1 },
+          "lastCheckedAt": { "type": "string", "format": "date-time" },
+          "endpoints": { "type": "array", "items": { "type": "string" } },
+          "normalizedEvents": { "type": "integer", "minimum": 0 },
+          "authoritativeQuests": { "type": "integer", "minimum": 0 },
+          "streaming": { "type": "boolean" }
+        }
+      },
+      "CreateSessionInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": { "displayName": { "type": "string", "minLength": 1, "maxLength": 32, "default": "Guest fan" } }
+      },
+      "AnswerInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["questId", "choiceId"],
+        "properties": {
+          "questId": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "choiceId": { "type": "string", "minLength": 1, "maxLength": 40 }
+        }
+      },
+      "Session": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "displayName", "points", "streak"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "displayName": { "type": "string" },
+          "points": { "type": "integer", "minimum": 0 },
+          "streak": { "type": "integer", "minimum": 0 }
+        }
+      },
+      "Team": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "code", "flagCode"],
+        "properties": {
+          "name": { "type": "string" },
+          "code": { "type": "string" },
+          "flagCode": { "type": "string" }
+        }
+      },
+      "Match": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "competition", "home", "away", "sponsorPoolUsdc"],
+        "properties": {
+          "id": { "type": "integer" },
+          "competition": { "type": "string" },
+          "home": { "$ref": "#/components/schemas/Team" },
+          "away": { "$ref": "#/components/schemas/Team" },
+          "sponsorPoolUsdc": { "type": "number", "minimum": 0 }
+        }
+      },
+      "MatchEvent": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "minute", "minuteLabel", "title", "detail", "kind", "homeScore", "awayScore", "marketHome"],
+        "properties": {
+          "id": { "type": "string" },
+          "minute": { "type": "integer", "minimum": 0 },
+          "minuteLabel": { "type": "string" },
+          "title": { "type": "string" },
+          "detail": { "type": "string" },
+          "kind": { "type": "string", "enum": ["kickoff", "chance", "break", "goal", "final"] },
+          "homeScore": { "type": "integer", "minimum": 0 },
+          "awayScore": { "type": "integer", "minimum": 0 },
+          "marketHome": { "type": "number" },
+          "txlineSeq": { "type": "integer" },
+          "txlineAction": { "type": "string" }
+        }
+      },
+      "Choice": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "label", "hint"],
+        "properties": {
+          "id": { "type": "string" },
+          "label": { "type": "string" },
+          "hint": { "type": "string" }
+        }
+      },
+      "PublicQuest": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "The answer key is deliberately omitted from public room state.",
+        "required": ["id", "prompt", "context", "choices", "points", "settlesOn"],
+        "properties": {
+          "id": { "type": "string" },
+          "prompt": { "type": "string" },
+          "context": { "type": "string" },
+          "choices": { "type": "array", "minItems": 2, "items": { "$ref": "#/components/schemas/Choice" } },
+          "points": { "type": "integer", "minimum": 0 },
+          "settlesOn": { "type": "string" }
+        }
+      },
+      "SettledAnswer": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["questId", "choiceId", "correct", "points", "settledAt", "source"],
+        "properties": {
+          "questId": { "type": "string" },
+          "choiceId": { "type": "string" },
+          "correct": { "type": "boolean" },
+          "points": { "type": "integer", "minimum": 0 },
+          "settledAt": { "type": "string", "format": "date-time" },
+          "source": { "type": "string", "enum": ["txline", "replay"] },
+          "sourceSequence": { "type": "integer" }
+        }
+      },
+      "RoomSnapshot": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["session", "match", "event", "eventIndex", "eventCount", "quest", "finished", "answers", "source"],
+        "properties": {
+          "session": { "$ref": "#/components/schemas/Session" },
+          "match": { "$ref": "#/components/schemas/Match" },
+          "event": { "$ref": "#/components/schemas/MatchEvent" },
+          "eventIndex": { "type": "integer", "minimum": 0 },
+          "eventCount": { "type": "integer", "minimum": 1 },
+          "quest": { "anyOf": [{ "$ref": "#/components/schemas/PublicQuest" }, { "type": "null" }] },
+          "finished": { "type": "boolean" },
+          "answers": { "type": "array", "items": { "$ref": "#/components/schemas/SettledAnswer" } },
+          "source": { "$ref": "#/components/schemas/SourceStatus" }
+        }
+      },
+      "PayoutIntent": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "sessionId", "amountUsdc", "status"],
+        "properties": {
+          "id": { "type": "string" },
+          "sessionId": { "type": "string", "format": "uuid" },
+          "amountUsdc": { "type": "number", "minimum": 0 },
+          "recipient": { "type": "string" },
+          "status": { "type": "string", "enum": ["disabled", "test", "approval_required", "submitted"] }
+        }
+      },
+      "AnswerResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["room", "settlement", "payoutIntent"],
+        "properties": {
+          "room": { "$ref": "#/components/schemas/RoomSnapshot" },
+          "settlement": { "$ref": "#/components/schemas/SettledAnswer" },
+          "payoutIntent": { "anyOf": [{ "$ref": "#/components/schemas/PayoutIntent" }, { "type": "null" }] }
+        }
+      },
+      "RefreshResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["fixtureId", "normalizedEvents", "authoritativeQuests", "actions", "loadedAt"],
+        "properties": {
+          "fixtureId": { "type": "integer" },
+          "normalizedEvents": { "type": "integer", "minimum": 0 },
+          "authoritativeQuests": { "type": "integer", "minimum": 0 },
+          "actions": { "type": "array", "items": { "type": "string" } },
+          "loadedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "required": ["error"],
+        "properties": {
+          "error": { "type": "string" },
+          "activeQuestId": { "type": "string" },
+          "issues": { "type": "array", "items": { "type": "object" } }
+        }
+      }
+    }
+  }
+}

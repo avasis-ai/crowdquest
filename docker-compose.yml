@@ -1,0 +1,177 @@
+name: ${COMPOSE_PROJECT_NAME:-crowdquest}
+
+x-service-defaults: &service-defaults
+  restart: unless-stopped
+  init: true
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+services:
+  gateway:
+    <<: *service-defaults
+    image: caddy:2-alpine
+    user: "10001:10001"
+    depends_on:
+      web:
+        condition: service_healthy
+      orchestrator:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${CROWDQUEST_LOOPBACK_PORT:-18080}:8080"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+    networks:
+      - frontend
+    read_only: true
+    tmpfs:
+      - /config:size=8m,uid=10001,gid=10001,mode=0700
+      - /data:size=8m,uid=10001,gid=10001,mode=0700
+      - /tmp:size=8m,uid=10001,gid=10001,mode=1777
+    pids_limit: 100
+    mem_limit: 128m
+    cpus: 0.50
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+  web:
+    <<: *service-defaults
+    image: crowdquest-web:${CROWDQUEST_IMAGE_TAG:-local}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_CROWDQUEST_API_URL: ""
+        NEXT_PUBLIC_POLAR_CHECKOUT_URL: ${NEXT_PUBLIC_POLAR_CHECKOUT_URL:-}
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3000
+    expose:
+      - "3000"
+    networks:
+      - frontend
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+    pids_limit: 200
+    mem_limit: 512m
+    cpus: 1.00
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+  orchestrator:
+    <<: *service-defaults
+    image: crowdquest-orchestrator:${CROWDQUEST_IMAGE_TAG:-local}
+    build:
+      context: ./services/orchestrator
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 8788
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      CORS_ORIGINS: ${PUBLIC_ORIGIN:?Set PUBLIC_ORIGIN in the deployment environment file}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-crowdquest}
+      POSTGRES_USER: ${POSTGRES_USER:-crowdquest_app}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      TXLINE_ORIGIN: ${TXLINE_ORIGIN:?Set TXLINE_ORIGIN in the deployment environment file}
+      TXLINE_API_TOKEN_FILE: /run/secrets/txline_api_token
+      TXLINE_FIXTURE_ID: ${TXLINE_FIXTURE_ID:?Set TXLINE_FIXTURE_ID in the deployment environment file}
+      COINBASE_AGENT_URL: ${COINBASE_AGENT_URL:-}
+      COINBASE_AGENT_TOKEN_FILE: /run/secrets/coinbase_agent_token
+      PAYOUT_MODE: ${PAYOUT_MODE:-approval}
+      MAX_PAYOUT_USDC: ${MAX_PAYOUT_USDC:-20}
+      ADMIN_TOKEN_FILE: /run/secrets/admin_token
+    secrets:
+      - postgres_password
+      - txline_api_token
+      - coinbase_agent_token
+      - admin_token
+    expose:
+      - "8788"
+    networks:
+      - frontend
+      - database
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+    pids_limit: 200
+    mem_limit: 512m
+    cpus: 1.00
+    stop_grace_period: 20s
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8788/healthz').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+  postgres:
+    <<: *service-defaults
+    image: postgres:17-alpine
+    user: "70:70"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-crowdquest}
+      POSTGRES_USER: ${POSTGRES_USER:-crowdquest_app}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      PGDATA: /var/lib/postgresql/data/pgdata
+    secrets:
+      - postgres_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - database
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+      - /var/run/postgresql:size=8m,uid=70,gid=70,mode=0770
+    pids_limit: 200
+    mem_limit: 1g
+    cpus: 1.50
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 10s
+      timeout: 5s
+      start_period: 20s
+      retries: 5
+
+secrets:
+  postgres_password:
+    file: ${POSTGRES_PASSWORD_FILE:?Set POSTGRES_PASSWORD_FILE in the deployment environment file}
+  txline_api_token:
+    file: ${TXLINE_API_TOKEN_FILE:?Set TXLINE_API_TOKEN_FILE in the deployment environment file}
+  coinbase_agent_token:
+    file: ${COINBASE_AGENT_TOKEN_FILE:?Set COINBASE_AGENT_TOKEN_FILE in the deployment environment file}
+  admin_token:
+    file: ${ADMIN_TOKEN_FILE:?Set ADMIN_TOKEN_FILE in the deployment environment file}
+
+volumes:
+  postgres_data:
+
+networks:
+  frontend:
+    driver: bridge
+  database:
+    driver: bridge
+    internal: true
