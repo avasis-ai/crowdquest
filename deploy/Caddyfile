@@ -20,6 +20,9 @@
 		Permissions-Policy "camera=(), microphone=(), geolocation=()"
 	}
 
+	@demo path /demo.mp4
+	header @demo Content-Type "video/mp4"
+
 	@api path /healthz /v1 /v1/*
 	handle @api {
 		reverse_proxy orchestrator:8788 {
