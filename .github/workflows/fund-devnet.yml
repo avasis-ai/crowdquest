@@ -37,7 +37,9 @@ jobs:
             -H 'content-type: application/json' \
             --data "$payload")
           if ! jq -e '.result | type == "string"' <<<"$response" >/dev/null; then
-            jq -c '{code:.error.code,message:.error.message}' <<<"$response"
-            exit 1
+            error=$(jq -r '"code=\(.error.code) message=\(.error.message)"' <<<"$response")
+            echo "::warning::Official devnet faucet did not accept the request: $error"
+            echo "No funds were issued. Use the authenticated official faucet or retry later."
+            exit 0
           fi
           echo "Official devnet RPC accepted the airdrop request."
