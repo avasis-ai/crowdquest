@@ -21,7 +21,7 @@
 	}
 
 	@demo path /demo.mp4
-	header @demo Content-Type "video/mp4"
+	header @demo >Content-Type "video/mp4"
 
 	@api path /healthz /v1 /v1/*
 	handle @api {
