@@ -27,7 +27,7 @@ This diagram describes component boundaries, not a claim that an external connec
 
 The frontend has two routes:
 
-- `/` — match room and the Proof & tools view
+- `/` — match room and the Receipts & controls view
 - `/design-system` — foundations, primitives, product states, and design influences
 
 The frontend build uses vinext, Vite, and the Cloudflare Vite plugin. `.openai/hosting.json` currently declares no D1 or R2 binding. Generated `dist/` output is not an architectural source of truth.

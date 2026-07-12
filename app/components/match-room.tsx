@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,8 @@ import {
 import { Icon } from "./icons";
 
 type View = "room" | "trace";
+type SourceState = "connecting" | "live" | "replay" | "local";
+type OperationTone = "info" | "success" | "warning";
 
 type SettledAnswer = {
   questId: string;
@@ -53,19 +55,53 @@ export function MatchRoom() {
   const [apiSessionId, setApiSessionId] = useState<string | null>(null);
   const [apiAvailable, setApiAvailable] = useState(false);
   const [sourceConnected, setSourceConnected] = useState(false);
+  const [connectionPending, setConnectionPending] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [operationMessage, setOperationMessage] = useState("Connecting to the replay service…");
+  const [operationTone, setOperationTone] = useState<OperationTone>("info");
 
   const event = events[eventIndex];
   const quest = eventIndex < quests.length ? quests[eventIndex] : null;
   const finished = eventIndex === events.length - 1;
-  const timedOut = seconds === 0 && !choice;
+  const timedOut = seconds === 0;
+  const sourceState: SourceState = connectionPending
+    ? "connecting"
+    : sourceConnected
+      ? "live"
+      : apiAvailable
+        ? "replay"
+        : "local";
+
+  const sourceCopy = {
+    connecting: {
+      label: "Checking source",
+      title: "Connecting to the CrowdQuest session service",
+      detail: "The product will fall back to the bundled deterministic replay if the adapter is unavailable.",
+    },
+    live: {
+      label: "Live source",
+      title: "TxLINE adapter connected",
+      detail: "Current fixture state is normalized server-side before it reaches this workspace.",
+    },
+    replay: {
+      label: "API replay",
+      title: "Historical fixture via the replay adapter",
+      detail: "This is a completed fixture demonstration—not a live match or live market.",
+    },
+    local: {
+      label: "Local replay",
+      title: "Bundled deterministic fixture",
+      detail: "The API adapter is unavailable, so the same test scenario is running locally.",
+    },
+  }[sourceState];
 
   useEffect(() => {
-    if (!quest || choice) return;
+    if (!quest || submitting) return;
     const timer = window.setInterval(() => {
       setSeconds((value) => (value > 0 ? value - 1 : 0));
     }, 1000);
     return () => window.clearInterval(timer);
-  }, [quest, choice, eventIndex]);
+  }, [quest, submitting, eventIndex]);
 
   useEffect(() => {
     let cancelled = false;
@@ -82,13 +118,44 @@ export function MatchRoom() {
         setApiSessionId(room.session.id);
         setApiAvailable(true);
         setSourceConnected(room.source.connected);
+        setConnectionPending(false);
+        setOperationMessage(room.source.connected ? "TxLINE source connected through the server adapter." : "Replay adapter responded and is ready.");
+        setOperationTone(room.source.connected ? "success" : "info");
       } catch {
-        if (!cancelled) setApiAvailable(false);
+        if (!cancelled) {
+          setApiAvailable(false);
+          setSourceConnected(false);
+          setConnectionPending(false);
+          setOperationMessage("Replay service unavailable. Continuing with the local deterministic replay.");
+          setOperationTone("warning");
+        }
       }
     }
     void createSession();
     return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    if (!quest || timedOut || submitting) return;
+    function handleShortcut(event: KeyboardEvent) {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("input, textarea, select, button, a")) return;
+      const key = event.key.toLowerCase();
+      const index = key >= "1" && key <= "9"
+        ? Number(key) - 1
+        : key >= "a" && key <= "z"
+          ? key.charCodeAt(0) - 97
+          : -1;
+      const option = quest.choices[index];
+      if (!option) return;
+      event.preventDefault();
+      setChoice(option.id);
+      setOperationMessage(`${option.label} selected. Activate Lock answer to submit.`);
+      setOperationTone("info");
+    }
+    window.addEventListener("keydown", handleShortcut);
+    return () => window.removeEventListener("keydown", handleShortcut);
+  }, [quest, submitting, timedOut]);
 
   const userRank = useMemo(() => {
     const above = leaderboard.filter((player) => player.points > points).length;
@@ -96,7 +163,11 @@ export function MatchRoom() {
   }, [points]);
 
   async function advanceReplay() {
-    if (!quest || !choice) return;
+    if (!quest || !choice || submitting) return;
+    setSubmitting(true);
+    setOperationMessage("Locking answer and verifying the next match event…");
+    setOperationTone("info");
+    let settledLocallyAfterFailure = false;
     if (apiSessionId) {
       try {
         const response = await fetch(`${API_BASE}/v1/rooms/${apiSessionId}/answers`, {
@@ -115,9 +186,15 @@ export function MatchRoom() {
         setSourceConnected(payload.room.source.connected);
         setChoice(null);
         setSeconds(24);
+        setOperationMessage(settlement.correct ? `Answer settled correctly. ${settlement.points} points added.` : "Answer settled. No points added this round.");
+        setOperationTone("success");
+        setSubmitting(false);
         return;
       } catch {
         setApiAvailable(false);
+        setSourceConnected(false);
+        setApiSessionId(null);
+        settledLocallyAfterFailure = true;
       }
     }
     const correct = choice === quest.correctChoice;
@@ -135,6 +212,13 @@ export function MatchRoom() {
     setEventIndex((current) => Math.min(current + 1, events.length - 1));
     setChoice(null);
     setSeconds(24);
+    setOperationMessage(settledLocallyAfterFailure
+      ? "Replay service was interrupted. This result was settled from the bundled deterministic fixture."
+      : correct
+        ? `Answer settled correctly. ${settlement.points} points added.`
+        : "Answer settled. No points added this round.");
+    setOperationTone(settledLocallyAfterFailure ? "warning" : "success");
+    setSubmitting(false);
   }
 
   async function resetReplay() {
@@ -143,6 +227,7 @@ export function MatchRoom() {
         await fetch(`${API_BASE}/v1/rooms/${apiSessionId}/reset`, { method: "POST" });
       } catch {
         setApiAvailable(false);
+        setSourceConnected(false);
       }
     }
     setEventIndex(0);
@@ -153,7 +238,62 @@ export function MatchRoom() {
     setAnswers([]);
     setLastResult(null);
     setView("room");
+    setSubmitting(false);
+    setOperationMessage(apiAvailable ? "Replay reset. Server adapter ready." : "Replay reset in local deterministic mode.");
+    setOperationTone(apiAvailable ? "info" : "warning");
   }
+
+  function focusQuest() {
+    const questElement = document.getElementById("active-quest");
+    if (!questElement) return;
+    const top = window.scrollY + questElement.getBoundingClientRect().top - 14;
+    window.scrollTo({ top, behavior: "smooth" });
+  }
+
+  function handlePrimaryAction() {
+    if (timedOut) {
+      setSeconds(24);
+      setOperationMessage("Answer window restarted. Choose one option before time expires.");
+      setOperationTone("info");
+      return;
+    }
+    if (choice) {
+      void advanceReplay();
+      return;
+    }
+    focusQuest();
+    setOperationMessage("Choose an answer, then lock it before the timer expires.");
+    setOperationTone("info");
+  }
+
+  function handleChoiceKeyDown(index: number, keyboardEvent: ReactKeyboardEvent<HTMLButtonElement>) {
+    if (!quest || submitting || timedOut) return;
+    const keys = ["ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp", "Home", "End"];
+    if (!keys.includes(keyboardEvent.key)) return;
+    keyboardEvent.preventDefault();
+    const lastIndex = quest.choices.length - 1;
+    const nextIndex = keyboardEvent.key === "Home"
+      ? 0
+      : keyboardEvent.key === "End"
+        ? lastIndex
+        : keyboardEvent.key === "ArrowRight" || keyboardEvent.key === "ArrowDown"
+          ? (index + 1) % quest.choices.length
+          : (index - 1 + quest.choices.length) % quest.choices.length;
+    const nextChoice = quest.choices[nextIndex];
+    setChoice(nextChoice.id);
+    setOperationMessage(`${nextChoice.label} selected. Activate Lock answer to submit.`);
+    setOperationTone("info");
+    const choices = keyboardEvent.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>("[role='radio']");
+    choices?.[nextIndex]?.focus();
+  }
+
+  const primaryActionLabel = timedOut
+    ? "Restart answer window"
+    : submitting
+      ? "Verifying result…"
+      : choice
+        ? "Lock answer & reveal"
+        : "Choose an answer";
 
   return (
     <main className="app-shell">
@@ -166,9 +306,9 @@ export function MatchRoom() {
           <span>CrowdQuest</span>
         </a>
 
-        <div className="topbar-status">
-          <span className="status-pulse" />
-          <span>{sourceConnected ? "TxLINE live connected" : apiAvailable ? "TxLINE adapter · replay mode" : "Local replay mode"}</span>
+        <div className={`topbar-status source-${sourceState}`}>
+          <span className="status-pulse" aria-hidden="true" />
+          <span>{sourceCopy.label}</span>
           <span className="status-divider" />
           <span>Fixture {match.id}</span>
         </div>
@@ -177,10 +317,10 @@ export function MatchRoom() {
           <Button variant="panel" size="icon" className="icon-button" aria-label="How CrowdQuest works" onClick={() => setView("trace")}>
             <Icon name="info" />
           </Button>
-          <button className="profile-button" type="button">
+          <div className="profile-button">
             <span>AB</span>
             <span className="profile-copy"><b>Guest fan</b><small>{points.toLocaleString()} pts</small></span>
-          </button>
+          </div>
         </div>
       </header>
 
@@ -189,13 +329,13 @@ export function MatchRoom() {
           <Icon name="play" /> Match room
         </button>
         <button className={view === "trace" ? "active" : ""} onClick={() => setView("trace")}>
-          <Icon name="shield" /> Proof & tools
+          <Icon name="shield" /> Receipts & controls
         </button>
       </nav>
 
       {view === "room" ? (
         <div className="workspace" id="top">
-          <aside className="left-rail">
+          <aside className="left-rail" aria-label="Replay and match context">
             <section className="panel compact-panel replay-panel">
               <div className="eyebrow-row">
                 <span className="eyebrow"><Icon name="radio" /> Demo replay</span>
@@ -243,7 +383,24 @@ export function MatchRoom() {
             </section>
           </aside>
 
-          <section className="match-column">
+          <section className="match-column" aria-label="Active match and quest">
+            <section className={`source-banner source-${sourceState}`} aria-labelledby="source-title">
+              <span className="source-banner-icon"><Icon name={sourceState === "live" ? "radio" : sourceState === "local" ? "info" : "shield"} /></span>
+              <div>
+                <span className="source-label">{sourceCopy.label}</span>
+                <b id="source-title">{sourceCopy.title}</b>
+                <small>{sourceCopy.detail}</small>
+              </div>
+              <Badge variant={sourceState === "live" ? "live" : sourceState === "replay" ? "replay" : sourceState === "local" ? "offline" : "neutral"}>
+                {sourceState}
+              </Badge>
+            </section>
+
+            <div className={`operation-notice tone-${operationTone}`} role="status" aria-live="polite">
+              <Icon name={operationTone === "success" ? "circle-check" : operationTone === "warning" ? "info" : "radio"} />
+              <span>{operationMessage}</span>
+            </div>
+
             <section className="match-hero panel">
               <div className="stadium-lines" />
               <div className="match-meta">
@@ -273,13 +430,13 @@ export function MatchRoom() {
             </section>
 
             {!finished && quest ? (
-              <section className="quest-card panel">
+              <section className="quest-card panel" id="active-quest" aria-labelledby="quest-title">
                 {lastResult && (
                   <div className={`settlement-banner ${lastResult.correct ? "won" : "missed"}`}>
                     <span><Icon name={lastResult.correct ? "check" : "info"} /></span>
                     <div>
                       <b>{lastResult.correct ? `Correct · +${lastResult.points} points` : "Settled · not this time"}</b>
-                      <small>Previous quest closed from the next TxLINE event.</small>
+                      <small>Previous quest closed from the next configured fixture event.</small>
                     </div>
                     <span className="proof-chip">receipt saved</span>
                   </div>
@@ -288,22 +445,31 @@ export function MatchRoom() {
                 <div className="quest-heading">
                   <div>
                     <span className="eyebrow"><Icon name="spark" /> Host quest · #{eventIndex + 1}</span>
-                    <h1>{quest.prompt}</h1>
+                    <h1 id="quest-title">{quest.prompt}</h1>
                     <p>{quest.context}</p>
+                    <span className="answer-help">Keyboard: press {quest.choices.map((_, index) => String.fromCharCode(65 + index)).join(", ")} or 1–{quest.choices.length}. You can change your choice until you lock it.</span>
                   </div>
-                  <div className={`countdown ${seconds < 8 ? "urgent" : ""}`}>
-                    <span>{choice ? "LOCKED" : timedOut ? "CLOSED" : "LOCKS"}</span>
-                    <strong>{choice ? <Icon name="check" /> : `0:${seconds.toString().padStart(2, "0")}`}</strong>
+                  <div className={`countdown ${seconds < 8 ? "urgent" : ""} ${submitting ? "submitting" : ""}`}>
+                    <span>{submitting ? "VERIFYING" : timedOut ? "CLOSED" : "LOCKS"}</span>
+                    <strong>{submitting ? <Icon name="refresh" /> : `0:${seconds.toString().padStart(2, "0")}`}</strong>
                   </div>
                 </div>
 
-                <div className="choice-grid">
+                <div className="choice-grid" role="radiogroup" aria-label="Quest answer choices">
                   {quest.choices.map((option, index) => (
                     <button
                       className={`choice-card ${choice === option.id ? "selected" : ""}`}
-                      disabled={Boolean(choice) || seconds === 0}
+                      disabled={seconds === 0 || submitting}
                       key={option.id}
-                      onClick={() => setChoice(option.id)}
+                      onClick={() => {
+                        setChoice(option.id);
+                        setOperationMessage(`${option.label} selected. Activate Lock answer to submit.`);
+                        setOperationTone("info");
+                      }}
+                      onKeyDown={(keyboardEvent) => handleChoiceKeyDown(index, keyboardEvent)}
+                      role="radio"
+                      aria-checked={choice === option.id}
+                      tabIndex={choice === option.id || (!choice && index === 0) ? 0 : -1}
                       type="button"
                     >
                       <span className="choice-key">{String.fromCharCode(65 + index)}</span>
@@ -321,21 +487,27 @@ export function MatchRoom() {
                   <div className="settles-copy"><Icon name="shield" /><span>Settles from<br/><b>{quest.settlesOn}</b></span></div>
                   <Button
                     className="primary-button"
-                    disabled={!choice && !timedOut}
-                    onClick={timedOut ? () => setSeconds(24) : advanceReplay}
+                    disabled={submitting}
+                    onClick={handlePrimaryAction}
                   >
-                    {timedOut ? "Restart answer window" : choice ? "Reveal next update" : "Pick an answer"} <Icon name={timedOut ? "refresh" : "arrow"} />
+                    {primaryActionLabel} <Icon name={timedOut || submitting ? "refresh" : "arrow"} />
                   </Button>
                 </div>
               </section>
             ) : (
               <section className="finish-card panel">
+                {lastResult && (
+                  <div className={`final-settlement ${lastResult.correct ? "won" : "missed"}`}>
+                    <Icon name={lastResult.correct ? "circle-check" : "info"} />
+                    <span><b>Final quest settled</b><small>{lastResult.correct ? `+${lastResult.points} points recorded` : "No points added for the final quest"}</small></span>
+                  </div>
+                )}
                 <span className="finish-burst"><Icon name="trophy" /></span>
                 <span className="eyebrow">Replay complete</span>
                 <h1>{points.toLocaleString()} points</h1>
-                <p>You completed {answers.length} live quests with a {streak}× finishing streak. Every result has a replayable settlement receipt.</p>
+                <p>You completed {answers.length} replay quests with a {streak}× finishing streak. Every submitted answer has a session settlement record.</p>
                 <div className="finish-actions">
-                  <Button className="primary-button" onClick={() => setView("trace")}>Inspect proof trail <Icon name="shield" /></Button>
+                  <Button className="primary-button" onClick={() => setView("trace")}>Inspect receipts <Icon name="shield" /></Button>
                   <Button variant="panel" className="secondary-button" onClick={resetReplay}>Play again</Button>
                 </div>
               </section>
@@ -344,11 +516,11 @@ export function MatchRoom() {
             <p className="demo-disclosure">Replay mode demonstrates the live product loop using a completed covered fixture. Production mode consumes the TxLINE snapshot and SSE endpoints server-side.</p>
           </section>
 
-          <aside className="right-rail">
+          <aside className="right-rail" aria-label="Leaderboard and workflow status">
             <section className="panel leaderboard-panel">
               <div className="panel-title-row">
                 <div><span className="eyebrow">Match room</span><h2>Leaderboard</h2></div>
-                <span className="people-live"><span /> demo cohort · 248</span>
+                <span className="people-live"><span /> demo board · 248</span>
               </div>
               <div className="podium-row">
                 {leaderboard.slice(0, 3).map((player) => (
@@ -374,20 +546,37 @@ export function MatchRoom() {
               </div>
               <div className="pool-note">
                 <Icon name="wallet" />
-                <div><b>$20 USDC demo sponsor pool</b><small>Top 3 test payout intents created after final verification</small></div>
+                <div><b>$20 USDC demo sponsor pool</b><small>Top 3 become eligible after settlement; any test payout still requires approval</small></div>
               </div>
             </section>
 
             <section className="panel compact-panel activity-panel">
-              <div className="panel-title-row"><h2>Agent activity</h2><button onClick={() => setView("trace")}>View trace</button></div>
-              <div className="activity-item"><span className="activity-dot lime"/><div><b>Quest #{Math.min(eventIndex + 1, quests.length)} opened</b><small>Rule selected from current match phase</small></div><time>now</time></div>
-              <div className="activity-item"><span className="activity-dot violet"/><div><b>Feed normalized</b><small>No raw TxLINE payload exposed</small></div><time>2s</time></div>
-              <div className="activity-item"><span className="activity-dot amber"/><div><b>Payout guard active</b><small>Test mode · approval required</small></div><time>3s</time></div>
+              <div className="panel-title-row"><h2>Workflow status</h2><button onClick={() => setView("trace")}>View system map</button></div>
+              <div className="activity-item"><span className="activity-dot lime"/><div><b>Quest #{Math.min(eventIndex + 1, quests.length)} available</b><small>Deterministic rule selected for this replay phase</small></div><time>now</time></div>
+              <div className="activity-item"><span className="activity-dot violet"/><div><b>{sourceState === "local" ? "Local fixture loaded" : "Adapter state normalized"}</b><small>{sourceState === "local" ? "No provider connection is being claimed" : "Raw provider payload stays server-side"}</small></div><time>ready</time></div>
+              <div className="activity-item"><span className="activity-dot amber"/><div><b>Payout policy configured</b><small>Test mode · approval required</small></div><time>guarded</time></div>
             </section>
           </aside>
+
+          <nav className="mobile-action-dock" aria-label="Quest actions">
+            <button className="dock-nav-button" type="button" onClick={() => setView("trace")}>
+              <Icon name="shield" />
+              <span>Receipts</span>
+            </button>
+            {!finished && quest ? (
+              <Button className="dock-primary-button" disabled={submitting} onClick={handlePrimaryAction}>
+                <span>{primaryActionLabel}</span>
+                <Icon name={timedOut || submitting ? "refresh" : "arrow"} />
+              </Button>
+            ) : (
+              <Button className="dock-primary-button" onClick={resetReplay}>
+                <span>Play replay again</span><Icon name="refresh" />
+              </Button>
+            )}
+          </nav>
         </div>
       ) : (
-        <TraceView onBack={() => setView("room")} answers={answers} apiAvailable={apiAvailable} sourceConnected={sourceConnected} />
+        <TraceView onBack={() => setView("room")} answers={answers} sourceState={sourceState} />
       )}
 
       <footer className="product-footer" id="business-model">
@@ -402,23 +591,21 @@ export function MatchRoom() {
 function TraceView({
   onBack,
   answers,
-  apiAvailable,
-  sourceConnected,
+  sourceState,
 }: {
   onBack: () => void;
   answers: SettledAnswer[];
-  apiAvailable: boolean;
-  sourceConnected: boolean;
+  sourceState: SourceState;
 }) {
   const trace = toolTrace.map((tool, index) => index === 0
-    ? { ...tool, state: sourceConnected ? "live connected" : apiAvailable ? "replay adapter" : "local replay" }
+    ? { ...tool, state: sourceState === "live" ? "live connected" : sourceState === "replay" ? "replay adapter" : sourceState === "connecting" ? "checking source" : "local replay" }
     : tool);
 
   return (
     <section className="trace-page">
       <div className="trace-intro">
-        <span className="eyebrow"><Icon name="shield" /> Execution proof</span>
-        <h1>One fan experience.<br/><em>Four tools, safely composed.</em></h1>
+        <span className="eyebrow"><Icon name="shield" /> System map</span>
+        <h1>One fan experience.<br/><em>Four guarded capabilities.</em></h1>
         <p>CrowdQuest is a vertical test of the AI operating-system idea: fans never learn feed APIs, bounty infrastructure, wallets, or payment workflows. They play; the workspace routes the work.</p>
         <Button variant="panel" className="secondary-button" onClick={onBack}><Icon name="arrow-left" /> Back to match room</Button>
       </div>
@@ -438,9 +625,9 @@ function TraceView({
 
       <div className="proof-layout">
         <section className="panel proof-panel">
-          <div className="panel-title-row"><div><span className="eyebrow">Decision log</span><h2>Replayable receipts</h2></div><Badge variant="proof">append-only</Badge></div>
+          <div className="panel-title-row"><div><span className="eyebrow">Session record</span><h2>Replay settlement receipts</h2></div><Badge variant="replay">session-local</Badge></div>
           <div className="receipt-list">
-            <div className="receipt-row"><span className="receipt-icon feed">TX</span><div><b>Fixture loaded</b><small>fixtures/snapshot · fixture {match.id}</small></div><code>source_verified</code></div>
+            <div className="receipt-row"><span className="receipt-icon feed">TX</span><div><b>Fixture loaded</b><small>fixtures/snapshot · fixture {match.id}</small></div><code>{sourceState === "live" ? "live_source" : sourceState === "replay" ? "adapter_replay" : sourceState === "connecting" ? "source_check" : "local_fixture"}</code></div>
             {answers.length ? answers.map((answer, index) => (
               <div className="receipt-row" key={answer.questId}>
                 <span className={`receipt-icon ${answer.correct ? "pass" : "fail"}`}><Icon name={answer.correct ? "check" : "minus"} /></span>

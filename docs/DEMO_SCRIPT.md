@@ -50,7 +50,7 @@ At completion:
 
 ## 2:20–3:10 — Trust and tool composition
 
-**Show:** Click **Inspect proof trail**, then scan the four tool cards, decision log, and guardrails.
+**Show:** Click **Inspect receipts**, then scan the four capability cards, session record, and guardrails.
 
 **Say:**
 

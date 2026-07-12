@@ -4,14 +4,18 @@ import { Slot } from "radix-ui";
 import { cn } from "@/lib/utils";
 
 const badgeVariants = cva(
-  "inline-flex w-fit shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full border px-2 py-1 text-[8px] font-semibold uppercase tracking-[.1em] whitespace-nowrap [&_svg]:size-3",
+  "inline-flex w-fit shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full border px-2.5 py-1.5 text-[10px] leading-none font-semibold uppercase tracking-[.09em] whitespace-nowrap [&_svg]:size-3.5",
   {
     variants: {
       variant: {
-        live: "border-[rgba(202,255,98,.18)] bg-[rgba(202,255,98,.07)] text-[var(--lime)]",
-        neutral: "border-[var(--line)] bg-white/[.025] text-[var(--muted)]",
-        proof: "border-[rgba(169,139,255,.18)] bg-[rgba(169,139,255,.08)] text-[var(--violet)]",
-        warning: "border-[rgba(255,189,105,.2)] bg-[rgba(255,189,105,.08)] text-[var(--amber)]",
+        live: "border-[var(--border-success)] bg-[var(--surface-success)] text-[var(--success)]",
+        replay: "border-[var(--border-info)] bg-[var(--surface-info)] text-[var(--info)]",
+        offline: "border-[var(--border-warning)] bg-[var(--surface-warning)] text-[var(--warning)]",
+        neutral: "border-[var(--border-subtle)] bg-[var(--surface-raised)] text-[var(--text-secondary)]",
+        proof: "border-[var(--border-accent)] bg-[var(--surface-accent)] text-[var(--accent-soft)]",
+        warning: "border-[var(--border-warning)] bg-[var(--surface-warning)] text-[var(--warning)]",
+        success: "border-[var(--border-success)] bg-[var(--surface-success)] text-[var(--success)]",
+        danger: "border-[var(--border-danger)] bg-[var(--surface-danger)] text-[var(--danger)]",
       },
     },
     defaultVariants: { variant: "neutral" },
