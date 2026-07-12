@@ -16,7 +16,10 @@ x-service-defaults: &service-defaults
 services:
   gateway:
     <<: *service-defaults
-    image: caddy:2-alpine
+    image: crowdquest-gateway:${CROWDQUEST_IMAGE_TAG:-local}
+    build:
+      context: ./deploy
+      dockerfile: Caddy.Dockerfile
     user: "10001:10001"
     depends_on:
       web:
