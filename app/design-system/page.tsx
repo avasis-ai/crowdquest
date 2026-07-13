@@ -11,13 +11,14 @@ import {
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Icon } from "../components/icons";
+import { BrandLogo } from "../components/brand-logo";
 
 const colors = [
-  { token: "canvas", value: "#08070D", role: "Application background", dark: true },
-  { token: "surface-panel", value: "#171024", role: "Primary panels", dark: true },
-  { token: "surface-raised", value: "#211633", role: "Raised controls", dark: true },
+  { token: "background", value: "oklch(0.148 0.004 228.8)", role: "Application background", dark: true },
+  { token: "card", value: "oklch(0.218 0.008 223.9)", role: "Primary panels", dark: true },
+  { token: "secondary", value: "oklch(0.275 0.011 216.9)", role: "Raised controls", dark: true },
   { token: "signal", value: "#CFFF5A", role: "Primary action", dark: false },
-  { token: "accent", value: "#8B5CF6", role: "System structure", dark: false },
+  { token: "chart-3", value: "oklch(0.541 0.281 293.009)", role: "System structure", dark: false },
   { token: "info", value: "#7CB8FF", role: "Replay / information", dark: false },
   { token: "warning", value: "#FFD166", role: "Time / approval", dark: false },
   { token: "danger", value: "#FF807A", role: "Failure / destructive", dark: false },
@@ -50,8 +51,7 @@ export default function DesignSystemPage() {
     <main className="ds-page">
       <header className="ds-nav">
         <Link className="brand" href="/" aria-label="CrowdQuest product">
-          <span className="brand-mark"><Icon name="bolt" /></span>
-          <span>CrowdQuest</span>
+          <BrandLogo />
         </Link>
         <Badge variant="proof">Signal OS · 1.0</Badge>
         <Button asChild variant="panel" size="sm"><Link href="/">Open workspace <Icon name="external" /></Link></Button>
@@ -65,7 +65,7 @@ export default function DesignSystemPage() {
           <div className="ds-hero-actions"><Button asChild><Link href="/">Experience the replay <Icon name="arrow" /></Link></Button><a href="#foundations">Read the specification</a></div>
         </div>
         <div className="ds-hero-board" aria-label="Design system summary">
-          <div className="ds-signal-orbit"><span><Icon name="bolt" /></span><i /><i /><i /></div>
+          <div className="ds-signal-orbit"><span><BrandLogo compact /></span><i /><i /><i /></div>
           <div className="ds-summary-grid"><span><b>10</b><small>semantic colors</small></span><span><b>4</b><small>truth layers</small></span><span><b>44px</b><small>minimum target</small></span><span><b>AA</b><small>contrast floor</small></span></div>
         </div>
       </section>
@@ -78,7 +78,7 @@ export default function DesignSystemPage() {
       </section>
 
       <section className="ds-section">
-        <div className="ds-section-heading"><span>02</span><div><h2>Color and surfaces</h2><p>Near-black canvas and purple depth create calm structure. Signal lime is reserved for commitment, success, and the current point of attention.</p></div></div>
+        <div className="ds-section-heading"><span>02</span><div><h2>Color and surfaces</h2><p>The b2fms620zo OKLCH foundation creates neutral, calibrated depth. Signal lime is reserved for commitment, success, and the current point of attention.</p></div></div>
         <div className="swatch-grid">
           {colors.map((color) => (
             <article className="swatch" key={color.token}>

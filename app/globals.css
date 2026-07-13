@@ -1,27 +1,70 @@
 @import "tailwindcss";
 
 @theme inline {
-  --color-background: var(--canvas);
-  --color-foreground: var(--text-primary);
-  --color-primary: var(--signal);
-  --color-primary-foreground: var(--signal-ink);
-  --color-card: var(--surface-panel);
-  --color-card-foreground: var(--text-primary);
-  --color-border: var(--border-subtle);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 :root {
   color-scheme: dark;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.148 0.004 228.8);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.148 0.004 228.8);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.148 0.004 228.8);
+  --primary: oklch(0.218 0.008 223.9);
+  --primary-foreground: oklch(0.987 0.002 197.1);
+  --secondary: oklch(0.963 0.002 197.1);
+  --secondary-foreground: oklch(0.218 0.008 223.9);
+  --muted: oklch(0.963 0.002 197.1);
+  --muted-foreground: oklch(0.56 0.021 213.5);
+  --accent: oklch(0.218 0.008 223.9);
+  --accent-foreground: oklch(0.987 0.002 197.1);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.925 0.005 214.3);
+  --input: oklch(0.925 0.005 214.3);
+  --ring: oklch(0.723 0.014 214.4);
+  --chart-1: oklch(0.811 0.111 293.571);
+  --chart-2: oklch(0.606 0.25 292.717);
+  --chart-3: oklch(0.541 0.281 293.009);
+  --chart-4: oklch(0.491 0.27 292.581);
+  --chart-5: oklch(0.432 0.232 292.759);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.987 0.002 197.1);
+  --sidebar-foreground: oklch(0.148 0.004 228.8);
+  --sidebar-primary: oklch(0.218 0.008 223.9);
+  --sidebar-primary-foreground: oklch(0.987 0.002 197.1);
+  --sidebar-accent: oklch(0.963 0.002 197.1);
+  --sidebar-accent-foreground: oklch(0.218 0.008 223.9);
+  --sidebar-border: oklch(0.925 0.005 214.3);
+  --sidebar-ring: oklch(0.723 0.014 214.4);
   /* CrowdQuest Signal OS: canonical raw tokens */
-  --cq-night-950: #08070d;
-  --cq-night-900: #0e0a16;
-  --cq-plum-900: #171024;
-  --cq-plum-850: #211633;
-  --cq-plum-800: #2d1d46;
-  --cq-chalk: #faf8ff;
-  --cq-touchline: #b8b1c7;
+  --cq-night-950: var(--background);
+  --cq-night-900: oklch(0.17 0.006 223.9);
+  --cq-plum-900: var(--card);
+  --cq-plum-850: var(--secondary);
+  --cq-plum-800: oklch(0.33 0.025 245);
+  --cq-chalk: var(--foreground);
+  --cq-touchline: var(--muted-foreground);
   --cq-lime: #cfff5a;
   --cq-violet: #8b5cf6;
   --cq-violet-soft: #b9a1ff;
@@ -77,7 +120,7 @@
   --signal: var(--cq-action-primary-bg);
   --signal-hover: #ddff8a;
   --signal-ink: var(--cq-action-primary-fg);
-  --accent: var(--cq-violet);
+  --cq-accent: var(--cq-violet);
   --accent-soft: var(--cq-violet-soft);
   --info: var(--cq-blue);
   --success: var(--cq-state-success);
@@ -100,7 +143,6 @@
   /* Open Design extraction aliases */
   --bg: #08070d;
   --fg: #faf8ff;
-  --primary: #cfff5a;
   --font-display: var(--font-sans);
   --font-body: var(--font-sans);
   --text-xs: .75rem;
@@ -126,6 +168,35 @@
   --red: var(--danger);
 }
 
+.dark {
+  --background: oklch(0.148 0.004 228.8);
+  --foreground: oklch(0.987 0.002 197.1);
+  --card: oklch(0.218 0.008 223.9);
+  --card-foreground: oklch(0.987 0.002 197.1);
+  --popover: oklch(0.218 0.008 223.9);
+  --popover-foreground: oklch(0.987 0.002 197.1);
+  --primary: oklch(0.925 0.005 214.3);
+  --primary-foreground: oklch(0.218 0.008 223.9);
+  --secondary: oklch(0.275 0.011 216.9);
+  --secondary-foreground: oklch(0.987 0.002 197.1);
+  --muted: oklch(0.275 0.011 216.9);
+  --muted-foreground: oklch(0.723 0.014 214.4);
+  --accent: oklch(0.925 0.005 214.3);
+  --accent-foreground: oklch(0.218 0.008 223.9);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.56 0.021 213.5);
+  --sidebar: oklch(0.218 0.008 223.9);
+  --sidebar-foreground: oklch(0.987 0.002 197.1);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.987 0.002 197.1);
+  --sidebar-accent: oklch(0.275 0.011 216.9);
+  --sidebar-accent-foreground: oklch(0.987 0.002 197.1);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.56 0.021 213.5);
+}
+
 @layer base {
   * { box-sizing: border-box; }
   html { max-width: 100%; overflow-x: hidden; scroll-behavior: smooth; }
@@ -138,13 +209,21 @@
 
 .app-shell { position: relative; min-height: 100vh; overflow: hidden; background: radial-gradient(circle at 72% -10%, rgba(83, 66, 158, .38), transparent 33rem), radial-gradient(circle at 8% 24%, rgba(43, 24, 79, .42), transparent 30rem), linear-gradient(rgba(185, 161, 255, .025) 1px, transparent 1px), linear-gradient(90deg, rgba(185, 161, 255, .025) 1px, transparent 1px), var(--canvas); background-size: auto, auto, 56px 56px, 56px 56px, auto; }
 .ambient { position: fixed; width: 38rem; height: 38rem; border-radius: 50%; filter: blur(120px); pointer-events: none; }
-.ambient-one { top: 10rem; left: -24rem; background: var(--accent); opacity: .12; }
+.ambient-one { top: 10rem; left: -24rem; background: var(--cq-accent); opacity: .12; }
 .ambient-two { right: -24rem; bottom: -22rem; background: #2874ff; opacity: .08; }
 
 .topbar { position: relative; z-index: 20; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; height: 76px; padding: 0 30px; border-bottom: 1px solid var(--border-subtle); background: rgba(7, 6, 12, .88); backdrop-filter: blur(24px); }
-.brand { display: inline-flex; align-items: center; gap: 12px; width: fit-content; color: var(--text-primary); font-size: 18px; font-weight: 720; letter-spacing: -.04em; text-decoration: none; }
-.brand-mark { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 11px; background: var(--signal); color: var(--signal-ink); box-shadow: var(--shadow-signal); }
-.brand-mark svg { width: 19px; height: 19px; stroke-width: 2.4; }
+.brand { display: inline-flex; width: fit-content; color: var(--text-primary); text-decoration: none; }
+.cq-logo { display: inline-flex; align-items: center; gap: 11px; }
+.cq-logo-mark { width: 38px; height: 38px; overflow: visible; color: var(--signal); }
+.cq-logo-field { fill: #111015; stroke: currentColor; stroke-width: 1.5; }
+.cq-logo-c, .cq-logo-q, .cq-logo-signal { fill: none; stroke: currentColor; stroke-linecap: square; stroke-linejoin: miter; }
+.cq-logo-c { stroke-width: 3.2; }
+.cq-logo-q { stroke-width: 2.2; }
+.cq-logo-signal { stroke-width: 1.5; }
+.cq-logo-type { display: flex; align-items: baseline; font-size: 18px; letter-spacing: -.055em; line-height: 1; }
+.cq-logo-type b { font-weight: 520; }
+.cq-logo-type strong { color: var(--signal); font-weight: 760; }
 .topbar-status { display: flex; align-items: center; gap: 10px; color: var(--text-secondary); font-family: var(--font-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; }
 .status-pulse, .people-live > span { display: inline-block; width: 8px; height: 8px; flex: none; border-radius: 50%; background: var(--text-tertiary); box-shadow: 0 0 0 5px rgba(255, 255, 255, .035); }
 .source-live .status-pulse { background: var(--success); box-shadow: 0 0 0 5px rgba(207, 255, 90, .08); animation: pulse 2s infinite; }
@@ -201,7 +280,7 @@
 .probability-card span { color: var(--text-secondary); font-size: 12px; }
 .probability-card strong { font-size: 24px; letter-spacing: -.05em; }
 .probability-bar { height: 6px; margin: 10px 0 9px; overflow: hidden; border-radius: 99px; background: rgba(255, 255, 255, .07); }
-.probability-bar span { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--signal)); transition: width .5s ease; }
+.probability-bar span { display: block; height: 100%; background: linear-gradient(90deg, var(--cq-accent), var(--signal)); transition: width .5s ease; }
 .probability-card small { color: #8f9f96; font-size: 10px; }
 .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
 .stat-grid > div { display: flex; flex-direction: column; gap: 5px; padding: 12px; border: 1px solid var(--border-subtle); border-radius: 13px; background: rgba(8, 7, 13, .28); }
@@ -564,8 +643,8 @@
 }
 
 @media (max-width: 560px) {
-  .brand { font-size: 16px; }
-  .brand-mark { width: 33px; height: 33px; border-radius: 10px; }
+  .cq-logo-mark { width: 34px; height: 34px; }
+  .cq-logo-type { font-size: 16px; }
   .panel { border-radius: 17px; }
   .source-banner { grid-template-columns: 36px 1fr; gap: 10px; padding: 12px; }
   .source-banner-icon { width: 36px; height: 36px; border-radius: 11px; }
@@ -604,7 +683,7 @@
   .trace-intro h1 { font-size: 43px; }
   .business-metrics { margin-top: 8px; }
   .product-footer { width: calc(100% - 30px); flex-direction: column; align-items: flex-start; justify-content: center; padding: 20px 0 28px; line-height: 1.55; }
-  .ds-nav .brand { font-size: 15px; }
+  .ds-nav .cq-logo-type { font-size: 15px; }
   .ds-nav [data-slot="button"] { padding-inline: 12px; }
   .ds-hero { min-height: auto; padding: 75px 0; }
   .ds-hero-copy h1 { font-size: 52px; }

@@ -13,6 +13,7 @@ import {
   toolTrace,
 } from "@/lib/demo-data";
 import { Icon } from "./icons";
+import { BrandLogo } from "./brand-logo";
 
 type View = "room" | "trace";
 type SourceState = "connecting" | "live" | "replay" | "local";
@@ -355,8 +356,7 @@ export function MatchRoom() {
 
       <header className="topbar">
         <a className="brand" href="#top" aria-label="CrowdQuest home">
-          <span className="brand-mark"><Icon name="bolt" /></span>
-          <span>CrowdQuest</span>
+          <BrandLogo />
         </a>
 
         <div className={`topbar-status source-${sourceState}`}>
