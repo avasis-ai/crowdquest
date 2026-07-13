@@ -6,7 +6,7 @@
 
 CrowdQuest was created for the TxODDS World Cup Hackathon, Consumer and Fan Experiences track, and the Superteam India regional buildathon.
 
-[Live MVP](https://vps.avasis.ai) · [75-second demo](https://vps.avasis.ai/demo.mp4) · [Design system](https://vps.avasis.ai/design-system) · [Runtime source status](https://vps.avasis.ai/v1/source)
+[Live product](https://crowdquest.avasis.ai) · [75-second demo](https://crowdquest.avasis.ai/demo.mp4) · [Design system](https://crowdquest.avasis.ai/design-system) · [Runtime source status](https://crowdquest.avasis.ai/v1/source)
 
 ![CrowdQuest match room](public/screenshot.jpeg)
 
@@ -113,6 +113,7 @@ worker/                      vinext Cloudflare Worker entry point
 - [Architecture](docs/ARCHITECTURE.md)
 - [Security](docs/SECURITY.md)
 - [Production operations](docs/OPERATIONS.md)
+- [Domain cutover](docs/DOMAIN_CUTOVER.md)
 - [Design system](docs/DESIGN_SYSTEM.md)
 - [TxLINE integration](docs/TXLINE_INTEGRATION.md)
 - [Unified OpenAPI contract](openapi/crowdquest.openapi.json)

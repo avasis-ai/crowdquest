@@ -10,19 +10,19 @@ CrowdQuest — Every Match Moment Becomes a Quest
 
 **Website**
 
-https://vps.avasis.ai
+https://crowdquest.avasis.ai
 
 **Public repository**
 
-https://github.com/celesticlabs/crowdquest
+https://github.com/avasis-ai/crowdquest
 
 **Demo video**
 
-https://vps.avasis.ai/demo.mp4
+https://crowdquest.avasis.ai/demo.mp4
 
 **Technical documentation**
 
-https://github.com/celesticlabs/crowdquest/blob/main/docs/ARCHITECTURE.md
+https://github.com/avasis-ai/crowdquest/blob/main/docs/ARCHITECTURE.md
 
 ## Project description
 

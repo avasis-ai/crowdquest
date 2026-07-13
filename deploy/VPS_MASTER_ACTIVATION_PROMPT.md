@@ -8,7 +8,7 @@ You are the production operator for CrowdQuest on the Avasis AWS VPS. Continue u
 
 ## Objective
 
-Deploy the reviewed `main` branch of `https://github.com/celesticlabs/crowdquest` to `https://vps.avasis.ai`, validate the CrowdQuest Signal OS interface and complete replay flow, preserve every unrelated Avasis service, and report runtime truth without exaggeration.
+Deploy the reviewed `main` branch of `https://github.com/avasis-ai/crowdquest` to `https://crowdquest.avasis.ai`, validate the CrowdQuest Signal OS interface and complete replay flow, preserve every unrelated Avasis service, and report runtime truth without exaggeration.
 
 Known production boundaries:
 
@@ -16,7 +16,7 @@ Known production boundaries:
 - Environment: `/etc/crowdquest/production.env`
 - Secret directory: `/var/lib/crowdquest/secrets`
 - Loopback gateway: `127.0.0.1:18080`
-- Public origin: `https://vps.avasis.ai`
+- Public origin: `https://crowdquest.avasis.ai`
 - Containers: `gateway`, `web`, `orchestrator`, `postgres`
 - Host proxy: Caddy; `/kit-api/*` and other Avasis domains are out of scope
 - Open Design: separate loopback-only deployment under `/opt/open-design`; it is not a CrowdQuest runtime dependency
@@ -42,8 +42,8 @@ git branch --show-current
 git rev-parse HEAD
 git remote get-url origin
 docker compose --env-file /etc/crowdquest/production.env ps
-curl -fsS https://vps.avasis.ai/healthz
-curl -fsS https://vps.avasis.ai/v1/source | jq '{provider,mode,connected,fixtureId,normalizedEvents,authoritativeQuests,streaming}'
+curl -fsS https://crowdquest.avasis.ai/healthz
+curl -fsS https://crowdquest.avasis.ai/v1/source | jq '{provider,mode,connected,fixtureId,normalizedEvents,authoritativeQuests,streaming}'
 systemctl is-active caddy docker
 ```
 
@@ -76,12 +76,12 @@ Run all checks. Redact unexpected sensitive output before reporting.
 cd /opt/crowdquest-current
 docker compose --env-file /etc/crowdquest/production.env ps
 
-curl -fsS -o /dev/null https://vps.avasis.ai/
-curl -fsS -o /dev/null https://vps.avasis.ai/design-system
-curl -fsS -o /dev/null https://vps.avasis.ai/demo.mp4
+curl -fsS -o /dev/null https://crowdquest.avasis.ai/
+curl -fsS -o /dev/null https://crowdquest.avasis.ai/design-system
+curl -fsS -o /dev/null https://crowdquest.avasis.ai/demo.mp4
 curl -fsS -o /dev/null https://vps.avasis.ai/kit-api/health
 
-source_status=$(curl -fsS https://vps.avasis.ai/v1/source)
+source_status=$(curl -fsS https://crowdquest.avasis.ai/v1/source)
 printf '%s' "$source_status" | jq -e '
   .provider == "TxLINE" and
   (.mode == "live" or .mode == "replay") and
@@ -89,7 +89,7 @@ printf '%s' "$source_status" | jq -e '
   (.fixtureId | tostring | length > 0)
 '
 
-session=$(curl -fsS -X POST https://vps.avasis.ai/v1/sessions \
+session=$(curl -fsS -X POST https://crowdquest.avasis.ai/v1/sessions \
   -H 'content-type: application/json' \
   --data '{"displayName":"Release verification"}')
 printf '%s' "$session" | jq -e '
@@ -101,8 +101,8 @@ session_id=$(printf '%s' "$session" | jq -r '.room.session.id')
 access_token=$(printf '%s' "$session" | jq -r '.accessToken')
 unset session
 
-test "$(curl -sS -o /dev/null -w '%{http_code}' "https://vps.avasis.ai/v1/rooms/$session_id")" = 401
-test "$(curl -sS -o /dev/null -w '%{http_code}' -H 'Origin: https://untrusted.invalid' https://vps.avasis.ai/v1/source)" = 403
+test "$(curl -sS -o /dev/null -w '%{http_code}' "https://crowdquest.avasis.ai/v1/rooms/$session_id")" = 401
+test "$(curl -sS -o /dev/null -w '%{http_code}' -H 'Origin: https://untrusted.invalid' https://crowdquest.avasis.ai/v1/source)" = 403
 
 for step in \
   'penalty-result:no' \
@@ -113,7 +113,7 @@ for step in \
 do
   quest_id=${step%%:*}
   choice_id=${step#*:}
-  result=$(curl -fsS -X POST "https://vps.avasis.ai/v1/rooms/$session_id/answers" \
+  result=$(curl -fsS -X POST "https://crowdquest.avasis.ai/v1/rooms/$session_id/answers" \
     -H "authorization: Bearer $access_token" \
     -H 'content-type: application/json' \
     --data "{\"questId\":\"$quest_id\",\"choiceId\":\"$choice_id\"}")
@@ -123,7 +123,7 @@ done
 printf '%s' "$result" | jq -e '.room.session.points == 1490 and .room.session.streak == 8'
 unset access_token result
 
-curl -fsSI https://vps.avasis.ai/ | grep -qi '^content-security-policy:'
+curl -fsSI https://crowdquest.avasis.ai/ | grep -qi '^content-security-policy:'
 systemctl is-active --quiet crowdquest-backup.timer
 latest_backup=$(find /var/backups/crowdquest -maxdepth 1 -name '*.dump' -type f -printf '%T@ %p\n' | sort -n | tail -1 | cut -d' ' -f2-)
 test -n "$latest_backup"

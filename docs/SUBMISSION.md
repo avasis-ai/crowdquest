@@ -39,11 +39,11 @@ Prepare these once and reuse the exact same links in both forms:
 | Asset | Value |
 | --- | --- |
 | Project title | `CrowdQuest — Every Match Moment Becomes a Quest` |
-| Public app | `https://vps.avasis.ai` |
-| Public repository | `https://github.com/celesticlabs/crowdquest` |
-| Demo video | `https://vps.avasis.ai/demo.mp4` |
-| Technical documentation | `https://github.com/celesticlabs/crowdquest/blob/main/docs/ARCHITECTURE.md` |
-| TxLINE integration notes | `https://github.com/celesticlabs/crowdquest/blob/main/docs/TXLINE_INTEGRATION.md` |
+| Public app | `https://crowdquest.avasis.ai` |
+| Public repository | `https://github.com/avasis-ai/crowdquest` |
+| Demo video | `https://crowdquest.avasis.ai/demo.mp4` |
+| Technical documentation | `https://github.com/avasis-ai/crowdquest/blob/main/docs/ARCHITECTURE.md` |
+| TxLINE integration notes | `https://github.com/avasis-ai/crowdquest/blob/main/docs/TXLINE_INTEGRATION.md` |
 
 Verify all five links from a private/incognito window.
 

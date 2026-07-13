@@ -8,8 +8,8 @@ CrowdQuest is deployed from an immutable release worktree at `/opt/crowdquest-re
 readlink -f /opt/crowdquest-current
 cd /opt/crowdquest-current
 docker compose --env-file /etc/crowdquest/production.env ps
-curl -fsS https://vps.avasis.ai/healthz | jq '{status,databaseReady}'
-curl -fsS https://vps.avasis.ai/v1/source | jq '{mode,connected,streaming,normalizedEvents,authoritativeQuests}'
+curl -fsS https://crowdquest.avasis.ai/healthz | jq '{status,databaseReady}'
+curl -fsS https://crowdquest.avasis.ai/v1/source | jq '{mode,connected,streaming,normalizedEvents,authoritativeQuests}'
 ```
 
 `databaseReady` must be true. `streaming` means an authenticated SSE response is currently open, not merely that the background loop started. Replay is a valid disclosed state.

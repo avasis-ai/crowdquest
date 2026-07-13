@@ -1,6 +1,7 @@
-# Import this snippet into the existing host Caddy configuration after setting
-# CROWDQUEST_DOMAIN and CROWDQUEST_LOOPBACK_PORT in the Caddy service environment.
-{$CROWDQUEST_DOMAIN} {
+# Import this product-specific block into the existing host Caddy configuration.
+# Keep the legacy vps.avasis.ai block during migration because it also owns
+# unrelated /kit-api routing.
+crowdquest.avasis.ai {
 	encode zstd gzip
 	header {
 		Strict-Transport-Security "max-age=31536000"
@@ -9,5 +10,5 @@
 		Referrer-Policy "strict-origin-when-cross-origin"
 		Permissions-Policy "camera=(), microphone=(), geolocation=()"
 	}
-	reverse_proxy 127.0.0.1:{$CROWDQUEST_LOOPBACK_PORT}
+	reverse_proxy 127.0.0.1:18080
 }

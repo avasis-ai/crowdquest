@@ -13,9 +13,19 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://crowdquest.avasis.ai"),
   title: "CrowdQuest — Every match moment becomes a quest",
   description:
     "A live, sponsor-funded fan quest experience powered by TxLINE match data.",
+  alternates: { canonical: "/" },
+  openGraph: {
+    title: "CrowdQuest — Every match moment becomes a quest",
+    description: "Free, sponsor-funded football quests with visible source and settlement state.",
+    url: "https://crowdquest.avasis.ai",
+    siteName: "CrowdQuest",
+    images: [{ url: "/screenshot.jpeg", width: 1200, height: 750, alt: "CrowdQuest match room" }],
+    type: "website",
+  },
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
