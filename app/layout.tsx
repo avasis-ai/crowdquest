@@ -12,8 +12,10 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://vps.avasis.ai";
+
 export const metadata: Metadata = {
-  metadataBase: new URL("https://crowdquest.avasis.ai"),
+  metadataBase: new URL(siteUrl),
   title: "CrowdQuest — Every match moment becomes a quest",
   description:
     "A live, sponsor-funded fan quest experience powered by TxLINE match data.",
@@ -21,7 +23,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "CrowdQuest — Every match moment becomes a quest",
     description: "Free, sponsor-funded football quests with visible source and settlement state.",
-    url: "https://crowdquest.avasis.ai",
+    url: siteUrl,
     siteName: "CrowdQuest",
     images: [{ url: "/screenshot.jpeg", width: 1200, height: 750, alt: "CrowdQuest match room" }],
     type: "website",
