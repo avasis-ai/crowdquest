@@ -87,9 +87,9 @@ export function MatchRoom() {
       detail: "The product will fall back to the bundled deterministic replay if the adapter is unavailable.",
     },
     live: {
-      label: "Live source",
-      title: "TxLINE adapter connected",
-      detail: "Current fixture state is normalized server-side before it reaches this workspace.",
+      label: "TxLINE verified",
+      title: "TxLINE fixture connected",
+      detail: "Confirmed fixture events are normalized server-side before they reach this workspace.",
     },
     replay: {
       label: "API replay",
@@ -582,7 +582,7 @@ export function MatchRoom() {
               </section>
             )}
 
-            <p className="demo-disclosure">Replay mode demonstrates the live product loop using a completed covered fixture. Production mode consumes the TxLINE snapshot and SSE endpoints server-side.</p>
+            <p className="demo-disclosure">{sourceConnected ? "This completed fixture is resolved from confirmed TxLINE history and the fixture-scoped score stream." : "Replay mode demonstrates the product loop using a completed covered fixture while the provider source is unavailable."}</p>
           </section>
 
           <aside className="right-rail" aria-label="Leaderboard and workflow status">
