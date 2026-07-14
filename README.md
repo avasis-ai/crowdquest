@@ -2,7 +2,7 @@
 
 **Every match moment becomes a quest.** CrowdQuest is a free-to-play, sponsor-funded second-screen experience for football fans. A room turns match events into short, time-boxed questions, locks each answer, resolves it from match state, and updates a points leaderboard.
 
-> **Runtime disclosure:** CrowdQuest starts in deterministic historical replay mode. A valid server-side TxLINE credential is required before the orchestrator can read TxLINE data. The repository does not execute cryptocurrency payouts: it creates capped, metadata-only payout intents in disabled, test, or approval-required states.
+> **Runtime disclosure:** The production orchestrator currently authenticates to TxLINE, ingests the configured fixture's historical SSE and score stream, normalizes confirmed events, and resolves all five quests from TxLINE evidence. The authored replay remains a judgeable fallback. The repository does not execute cryptocurrency payouts: it creates capped, metadata-only payout intents in disabled, test, or approval-required states.
 
 CrowdQuest was created for the TxODDS World Cup Hackathon, Consumer and Fan Experiences track, and the Superteam India regional buildathon.
 

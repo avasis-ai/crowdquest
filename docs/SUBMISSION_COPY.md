@@ -30,9 +30,9 @@ CrowdQuest turns decisive football moments into free, sponsor-funded micro-quest
 
 ## TxLINE API feedback
 
-TxLINE’s guest-auth endpoint worked as documented and returned HTTP 200 with the expected JWT shape. The OpenAPI contract and official on-chain examples were especially helpful: they made the two-header access model, fixture-scoped score stream, devnet addresses, subscribe instruction, and `${txSig}::${jwt}` activation message unambiguous. We implemented `/api/fixtures/snapshot`, `/api/scores/historical/{fixtureId}`, `/api/odds/snapshot/{fixtureId}`, and `/api/scores/stream` behind a server-only adapter, then project normalized score events into the five deterministic facts used by fixture `18209181`.
+TxLINE’s guest authentication and two-header access model were straightforward. We implemented `/api/fixtures/snapshot`, `/api/scores/historical/{fixtureId}`, `/api/odds/snapshot/{fixtureId}`, and `/api/scores/stream` behind a server-only adapter. Production currently ingests 1,004 confirmed events for fixture `18209181` and projects them into all five authoritative quest facts, with each settlement retaining its TxLINE source sequence.
 
-The main friction was activation. Free access still requires a funded Solana devnet fee payer. The official airdrop returned JSON-RPC `-32603 Internal error` or rate-limit responses from the development machine, AWS host, and a clean GitHub runner; `devnet-pow` also requires an initial fee balance. We therefore disclose replay mode instead of fabricating a live connection. A hackathon-scoped read-only token, sponsor-funded activation transaction, or reserved faucet capacity would materially improve onboarding.
+The main friction was activation and response-contract discovery. Public devnet faucet capacity was unreliable, and the historical score endpoint returned `text/event-stream` frames even when JSON was requested. Its production payload uses fields such as `FixtureId`, `Clock`, `Score`, and `Seq`. Explicit SSE parsing, provisional-event rejection, and production-shaped contract tests resolved the ingestion issue. Reserved faucet capacity and side-by-side historical SSE examples would materially improve onboarding.
 
 ## India confirmation
 

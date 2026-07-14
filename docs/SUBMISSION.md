@@ -22,9 +22,9 @@ Do not submit until every required item is true:
 - [x] The app is reachable at a public URL while signed out.
 - [x] The repository is public and contains the final source and these documents.
 - [x] The demo is public/unlisted, viewable while signed out, and under five minutes.
-- [ ] The deployed runtime honestly demonstrates TxLINE as a primary data source, not only static replay data.
+- [x] The deployed runtime honestly demonstrates TxLINE as a primary data source, with the authored replay retained as a fallback.
 - [x] `/v1/source` and the demo agree about connected versus replay mode.
-- [ ] At least one accepted TxLINE fixture/score operation has been tested and documented without exposing credentials.
+- [x] Accepted TxLINE fixture, historical-score SSE, and fixture-scoped stream operations have been tested without exposing credentials.
 - [x] The team has written genuine TxLINE API feedback from that test.
 - [x] No screen or copy implies that test intents are completed payouts.
 - [x] The project was built specifically for this hackathon.
@@ -66,7 +66,7 @@ The live Consumer and Fan Experiences form asks for:
 
 ### Accurate current implementation description
 
-> CrowdQuest is a responsive fan-room MVP built specifically for the TxODDS World Cup Hackathon. It includes a deterministic historical fixture replay so judges can complete five quests after match activity ends, plus an optional Fastify orchestrator for guest sessions, server-side scoring, persistence, source status, and capped reward-intent metadata. TxLINE credentials remain server-side; the adapter performs fixture-scoped source checks and score normalization. The deployed runtime must be described as replay until a valid token is configured and accepted source data is shown. CrowdQuest awards game points only in the current build. It does not verify Solana proofs or transfer USDC.
+> CrowdQuest is a responsive fan-room MVP built specifically for the TxODDS World Cup Hackathon. Its Fastify orchestrator provides guest sessions, PostgreSQL persistence, server-side scoring, source status, and capped reward-intent metadata. TxLINE credentials remain server-side; the production adapter ingests the configured fixture's historical SSE and score stream, rejects provisional records, normalizes confirmed score events, and derives all five quest resolutions with source sequences. The authored historical replay remains available so judges can complete the experience after match activity ends. CrowdQuest awards game points only in the current build. It does not verify Solana proofs or transfer USDC.
 
 After live integration is verified, update only the TxLINE sentence with the exact endpoint, fixture, mode, and evidence shown in the demo. Do not rewrite the payout boundary.
 
@@ -75,13 +75,13 @@ After live integration is verified, update only the TxLINE sentence with the exa
 The sponsor explicitly requires firsthand feedback. Current tested feedback:
 
 ```text
-Endpoint(s) tested: POST /auth/guest/start (accepted); protected fixture/history/stream routes implemented but not yet credential-accepted.
+Endpoint(s) tested: POST /auth/guest/start, GET /api/fixtures/snapshot, GET /api/scores/historical/18209181, and GET /api/scores/stream?fixtureId=18209181 (all accepted).
 Network and fixture: TxLINE devnet; fixture 18209181.
-What worked well: Guest auth returned HTTP 200 with the documented JWT shape. The OpenAPI contract and official examples clearly define the dual-header request model, fixture-scoped SSE filter, subscribe instruction, and `${txSig}::${jwt}` activation signature.
+What worked well: Guest auth and the dual-header access model were straightforward. The fixture-scoped feed supplied a detailed sequence of confirmed goals, penalties, cards, possession changes, clock state, and finalization evidence; CrowdQuest currently normalizes 1,004 confirmed events into five authoritative quest facts.
 Schema or documentation detail that helped: The official score schema, devnet IDL, program address, token mint, and runnable subscription examples made a narrow normalizer and deterministic fixture projection possible.
-Friction encountered: Free data access still needs a funded Solana devnet fee payer. The official faucet failed from the developer machine, AWS host, and clean GitHub runner; devnet-pow also requires an initial fee balance.
+Friction encountered: Free-tier activation initially depended on unreliable public devnet faucet capacity. After activation, the historical score endpoint returned `text/event-stream` frames even when JSON was requested, while field casing differed from an earlier example shape (`FixtureId`, `Clock`, `Score`, `Seq`). Supporting the production SSE contract explicitly resolved this.
 Exact error/status, if any: JSON-RPC -32603 Internal error and HTTP/JSON-RPC 429 airdrop-limit responses.
-Workaround or improvement requested: Provide a hackathon read-only token, sponsor the activation fee transaction, or reserve faucet capacity for registered teams. Replay remains visibly disclosed until activation succeeds.
+Workaround or improvement requested: Document the historical endpoint's SSE response and production casing alongside the snapshot examples, and provide reserved faucet capacity or sponsor-funded activation for hackathon teams.
 ```
 
 Do not turn documentation expectations into fabricated experience. If access failed, report the exact activation or request failure and what was still implemented.
