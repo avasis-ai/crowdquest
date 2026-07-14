@@ -15,7 +15,7 @@ import {
 import { Icon } from "./icons";
 import { BrandLogo } from "./brand-logo";
 
-type View = "room" | "trace";
+type View = "room" | "signal" | "trace";
 type SourceState = "connecting" | "live" | "replay" | "local";
 type OperationTone = "info" | "success" | "warning";
 
@@ -384,6 +384,9 @@ export function MatchRoom() {
         <button className={view === "trace" ? "active" : ""} onClick={() => setView("trace")}>
           <Icon name="shield" /> Receipts & controls
         </button>
+        <button className={view === "signal" ? "active" : ""} onClick={() => setView("signal")}>
+          <Icon name="radio" /> Signal monitor
+        </button>
       </nav>
 
       {view === "room" ? (
@@ -628,6 +631,8 @@ export function MatchRoom() {
             )}
           </nav>
         </div>
+      ) : view === "signal" ? (
+        <SignalMonitor onBack={() => setView("room")} />
       ) : (
         <TraceView onBack={() => setView("room")} answers={answers} sourceState={sourceState} />
       )}
@@ -644,6 +649,153 @@ export function MatchRoom() {
 function secondsUntil(isoTime: string | null) {
   if (!isoTime) return LOCAL_ANSWER_WINDOW_SECONDS;
   return Math.max(0, Math.ceil((Date.parse(isoTime) - Date.now()) / 1_000));
+}
+
+type SourceTelemetry = {
+  provider: string;
+  connected: boolean;
+  mode: "live" | "replay";
+  fixtureId: number;
+  lastCheckedAt: string;
+  endpoints: string[];
+  normalizedEvents: number;
+  authoritativeQuests: number;
+  streaming: boolean;
+};
+
+type TelemetrySample = {
+  at: number;
+  normalizedEvents: number;
+  latency: number;
+};
+
+function SignalMonitor({ onBack }: { onBack: () => void }) {
+  const [source, setSource] = useState<SourceTelemetry | null>(null);
+  const [samples, setSamples] = useState<TelemetrySample[]>([]);
+  const [requestError, setRequestError] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function sampleSource() {
+      const startedAt = performance.now();
+      try {
+        const response = await fetch(`${API_BASE}/v1/source`, { cache: "no-store" });
+        if (!response.ok) throw new Error(`source request failed: ${response.status}`);
+        const payload = await response.json() as SourceTelemetry;
+        if (cancelled) return;
+        const sample = {
+          at: Date.now(),
+          normalizedEvents: payload.normalizedEvents,
+          latency: Math.max(1, Math.round(performance.now() - startedAt)),
+        };
+        setSource(payload);
+        setSamples((current) => [...current, sample].slice(-24));
+        setRequestError(false);
+      } catch {
+        if (!cancelled) setRequestError(true);
+      }
+    }
+    void sampleSource();
+    const timer = window.setInterval(() => void sampleSource(), 4_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, []);
+
+  const latest = samples.at(-1);
+  const graphPoints = samples.length > 1
+    ? samples.map((sample, index) => {
+      const x = (index / (samples.length - 1)) * 100;
+      const maxEvents = Math.max(1, ...samples.map((item) => item.normalizedEvents));
+      const y = 94 - (sample.normalizedEvents / maxEvents) * 78;
+      return `${x},${y}`;
+    }).join(" ")
+    : "0,94 100,94";
+  const mode = requestError ? "offline" : source?.connected ? "live" : source ? "replay" : "checking";
+
+  return (
+    <section className="signal-page" aria-labelledby="signal-title">
+      <header className="signal-header">
+        <div>
+          <span className="eyebrow"><Icon name="radio" /> TxLINE source observatory</span>
+          <h1 id="signal-title">Signal monitor.<br/><em>Evidence, not theatre.</em></h1>
+          <p>Client-observed telemetry from CrowdQuest’s public source boundary. Replay stays labelled replay; a live badge appears only after accepted TxLINE fixture evidence resolves a quest.</p>
+        </div>
+        <Button variant="panel" className="secondary-button" onClick={onBack}><Icon name="arrow-left" /> Back to match room</Button>
+      </header>
+
+      <section className={`signal-status panel signal-${mode}`}>
+        <div className="signal-beacon"><span /><span /><Icon name="radio" /></div>
+        <div>
+          <span className="source-label">Current source state</span>
+          <h2>{mode === "live" ? "TxLINE devnet · accepted live evidence" : mode === "replay" ? "Devnet adapter · replay telemetry" : mode === "offline" ? "Source endpoint unavailable" : "Checking the source boundary"}</h2>
+          <p>{source?.connected
+            ? "Normalized fixture events are authoritative for quest settlement."
+            : source
+              ? "The transport worker may be open, but no normalized TxLINE evidence is currently authoritative."
+              : "Waiting for the first public source sample."}</p>
+        </div>
+        <Badge variant={mode === "live" ? "live" : mode === "replay" ? "replay" : "offline"}>{mode}</Badge>
+      </section>
+
+      <div className="telemetry-grid">
+        <section className="panel telemetry-chart">
+          <div className="panel-title-row">
+            <div><span className="eyebrow">Rolling source samples</span><h2>Normalized event count</h2></div>
+            <span className="sample-clock">4s cadence · {samples.length}/24</span>
+          </div>
+          <div className="chart-stage" aria-label={`Normalized TxLINE events: ${source?.normalizedEvents ?? 0}`}>
+            <span className="chart-axis axis-top">{Math.max(1, ...samples.map((sample) => sample.normalizedEvents))}</span>
+            <span className="chart-axis axis-bottom">0</span>
+            <svg viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label="Rolling normalized event count graph">
+              <defs><linearGradient id="signal-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="var(--signal)" stopOpacity=".24"/><stop offset="1" stopColor="var(--signal)" stopOpacity="0"/></linearGradient></defs>
+              <polygon points={`0,100 ${graphPoints} 100,100`} fill="url(#signal-fill)" />
+              <polyline points={graphPoints} fill="none" stroke="var(--signal)" strokeWidth="1.4" vectorEffect="non-scaling-stroke" />
+            </svg>
+            {!source?.normalizedEvents && <div className="flatline-note"><Icon name="info" /> Zero accepted events is the current truthful value—not missing chart data.</div>}
+          </div>
+          <div className="chart-legend"><span><i className="legend-signal" /> accepted normalized events</span><span>latest sample {latest ? new Date(latest.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "pending"}</span></div>
+        </section>
+
+        <section className="metric-stack">
+          <article className="panel signal-metric"><span>Adapter mode</span><strong>{source?.mode ?? "—"}</strong><small>Provider: {source?.provider ?? "checking"}</small></article>
+          <article className="panel signal-metric"><span>Normalized events</span><strong>{source?.normalizedEvents ?? 0}</strong><small>{source?.authoritativeQuests ?? 0} authoritative quests</small></article>
+          <article className="panel signal-metric"><span>Source endpoint RTT</span><strong>{latest ? `${latest.latency} ms` : "—"}</strong><small>Measured in this browser</small></article>
+          <article className="panel signal-metric"><span>Stream worker</span><strong>{source?.streaming ? "open" : "idle"}</strong><small>{source?.connected ? "accepted evidence" : "not authoritative"}</small></article>
+        </section>
+      </div>
+
+      <div className="signal-lower-grid">
+        <section className="panel pipeline-panel">
+          <div className="panel-title-row"><div><span className="eyebrow">Resolution path</span><h2>From feed to fan result</h2></div><Badge variant="neutral">server-side</Badge></div>
+          <div className="signal-pipeline">
+            {["TxLINE SSE", "Normalize event", "Derive match fact", "Resolve quest", "Update fan room"].map((step, index) => (
+              <div key={step}><span>0{index + 1}</span><Icon name={index === 0 ? "radio" : index === 1 ? "database" : index === 2 ? "layers" : index === 3 ? "shield" : "circle-check"}/><b>{step}</b>{index < 4 && <i><Icon name="arrow" /></i>}</div>
+            ))}
+          </div>
+        </section>
+
+        <section className="panel endpoint-panel">
+          <div className="panel-title-row"><div><span className="eyebrow">Configured boundary</span><h2>Fixture-scoped routes</h2></div><code>#{source?.fixtureId ?? match.id}</code></div>
+          <div className="endpoint-list">
+            {(source?.endpoints ?? ["/api/fixtures/snapshot", `/api/scores/historical/${match.id}`, `/api/odds/snapshot/${match.id}`, "/api/scores/stream"]).map((endpoint) => (
+              <div key={endpoint}><span className="endpoint-dot"/><code>{endpoint}</code><span>{endpoint.includes("stream") ? "SSE" : "GET"}</span></div>
+            ))}
+          </div>
+          <p className="source-timestamp">Provider check: {source?.lastCheckedAt ? new Date(source.lastCheckedAt).toLocaleString() : "pending"}</p>
+        </section>
+      </div>
+
+      <section className="panel replay-timeline-panel">
+        <div className="panel-title-row"><div><span className="eyebrow">Judgeable fallback</span><h2>Deterministic fixture timeline</h2></div><Badge variant="replay">historical replay</Badge></div>
+        <div className="replay-timeline">
+          {events.map((item) => <div key={item.id} className={`timeline-event timeline-${item.kind}`}><span>{item.minuteLabel}</span><i/><b>{item.homeScore}—{item.awayScore}</b><small>{item.title}</small></div>)}
+        </div>
+        <p>This lower timeline is authored replay evidence and is intentionally separated from the live telemetry graph above.</p>
+      </section>
+    </section>
+  );
 }
 
 function TraceView({
