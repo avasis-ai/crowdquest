@@ -15,7 +15,7 @@ import {
 import { Icon } from "./icons";
 import { BrandLogo } from "./brand-logo";
 
-type View = "room" | "signal" | "trace";
+type View = "intro" | "room" | "signal" | "trace";
 type SourceState = "connecting" | "live" | "replay" | "local";
 type OperationTone = "info" | "success" | "warning";
 
@@ -24,6 +24,8 @@ type SettledAnswer = {
   choice: string;
   correct: boolean;
   points: number;
+  source?: "txline" | "replay";
+  sourceSequence?: number;
 };
 
 type ApiRoom = {
@@ -31,7 +33,7 @@ type ApiRoom = {
   eventIndex: number;
   questClosesAt: string | null;
   source: { connected: boolean; mode: "live" | "replay" };
-  answers: Array<{ questId: string; choiceId: string; correct: boolean; points: number }>;
+  answers: Array<{ questId: string; choiceId: string; correct: boolean; points: number; source: "txline" | "replay"; sourceSequence?: number }>;
 };
 
 type CreateSessionResponse = { room: ApiRoom; accessToken: string };
@@ -49,7 +51,7 @@ const EVENT_COLORS = {
 };
 
 export function MatchRoom() {
-  const [view, setView] = useState<View>("room");
+  const [view, setView] = useState<View>("intro");
   const [eventIndex, setEventIndex] = useState(0);
   const [choice, setChoice] = useState<string | null>(null);
   const [seconds, setSeconds] = useState(LOCAL_ANSWER_WINDOW_SECONDS);
@@ -200,12 +202,12 @@ export function MatchRoom() {
           setSubmitting(false);
           return;
         }
-        const payload = await response.json() as { room: ApiRoom; settlement: { questId: string; choiceId: string; correct: boolean; points: number } };
-        const settlement = { questId: payload.settlement.questId, choice: payload.settlement.choiceId, correct: payload.settlement.correct, points: payload.settlement.points };
+        const payload = await response.json() as { room: ApiRoom; settlement: { questId: string; choiceId: string; correct: boolean; points: number; source: "txline" | "replay"; sourceSequence?: number } };
+        const settlement = { questId: payload.settlement.questId, choice: payload.settlement.choiceId, correct: payload.settlement.correct, points: payload.settlement.points, source: payload.settlement.source, sourceSequence: payload.settlement.sourceSequence };
         setEventIndex(payload.room.eventIndex);
         setPoints(payload.room.session.points);
         setStreak(payload.room.session.streak);
-        setAnswers(payload.room.answers.map((answer) => ({ questId: answer.questId, choice: answer.choiceId, correct: answer.correct, points: answer.points })));
+        setAnswers(payload.room.answers.map((answer) => ({ questId: answer.questId, choice: answer.choiceId, correct: answer.correct, points: answer.points, source: answer.source, sourceSequence: answer.sourceSequence })));
         setLastResult(settlement);
         setSourceConnected(payload.room.source.connected);
         setChoice(null);
@@ -228,6 +230,7 @@ export function MatchRoom() {
       choice,
       correct,
       points: correct ? quest.points : 0,
+      source: "replay" as const,
     };
 
     setAnswers((current) => [...current, settlement]);
@@ -355,7 +358,7 @@ export function MatchRoom() {
       <div className="ambient ambient-two" />
 
       <header className="topbar">
-        <a className="brand" href="#top" aria-label="CrowdQuest home">
+        <a className="brand" href="#home" aria-label="CrowdQuest home" onClick={() => setView("intro")}>
           <BrandLogo />
         </a>
 
@@ -367,20 +370,20 @@ export function MatchRoom() {
         </div>
 
         <div className="topbar-actions">
-          <Button variant="panel" size="icon" className="icon-button" aria-label="Open TxLINE signal monitor" onClick={() => setView("signal")}>
-            <Icon name="radio" />
-          </Button>
-          <Button variant="panel" size="icon" className="icon-button" aria-label="How CrowdQuest works" onClick={() => setView("trace")}>
-            <Icon name="info" />
-          </Button>
-          <div className="profile-button">
+          <button className="header-tool-button" aria-label="Open TxLINE signal monitor" onClick={() => setView("signal")}>
+            <Icon name="radio" /><span>Signal</span>
+          </button>
+          <button className="header-tool-button" aria-label="How CrowdQuest works" onClick={() => setView("trace")}>
+            <Icon name="info" /><span>System</span>
+          </button>
+          {view !== "intro" && <div className="profile-button">
             <span>AB</span>
             <span className="profile-copy"><b>Guest fan</b><small>{points.toLocaleString()} pts</small></span>
-          </div>
+          </div>}
         </div>
       </header>
 
-      <nav className="mode-switch" aria-label="Workspace view">
+      {view !== "intro" && <nav className="mode-switch" aria-label="Workspace view">
         <button className={view === "room" ? "active" : ""} onClick={() => setView("room")}>
           <Icon name="play" /> Match room
         </button>
@@ -390,9 +393,16 @@ export function MatchRoom() {
         <button className={view === "signal" ? "active" : ""} onClick={() => setView("signal")}>
           <Icon name="radio" /> Signal monitor
         </button>
-      </nav>
+      </nav>}
 
-      {view === "room" ? (
+      {view === "intro" ? (
+        <IntroView
+          sourceState={sourceState}
+          sourceCopy={sourceCopy}
+          onEnter={() => setView("room")}
+          onSignal={() => setView("signal")}
+        />
+      ) : view === "room" ? (
         <div className="workspace" id="top">
           <aside className="left-rail" aria-label="Replay and match context">
             <section className="panel compact-panel replay-panel">
@@ -495,9 +505,9 @@ export function MatchRoom() {
                     <span><Icon name={lastResult.correct ? "check" : "info"} /></span>
                     <div>
                       <b>{lastResult.correct ? `Correct · +${lastResult.points} points` : "Settled · not this time"}</b>
-                      <small>Previous quest closed from the next configured fixture event.</small>
+                      <small>{lastResult.source === "txline" ? `Verified from TxLINE sequence ${lastResult.sourceSequence ?? "recorded"}.` : "Settled from the disclosed deterministic replay."}</small>
                     </div>
-                    <span className="proof-chip">receipt saved</span>
+                    <span className="proof-chip">{lastResult.source === "txline" ? "TxLINE verified" : "replay receipt"}</span>
                   </div>
                 )}
 
@@ -646,6 +656,62 @@ export function MatchRoom() {
         <span>Free-to-play · sponsor-funded · human-owned submission</span>
       </footer>
     </main>
+  );
+}
+
+function IntroView({
+  sourceState,
+  sourceCopy,
+  onEnter,
+  onSignal,
+}: {
+  sourceState: SourceState;
+  sourceCopy: { label: string; title: string; detail: string };
+  onEnter: () => void;
+  onSignal: () => void;
+}) {
+  return (
+    <section className="intro-page" id="home">
+      <div className="intro-hero">
+        <div className="intro-copy">
+          <span className="editorial-label">WORLD CUP / LIVE FAN ROOM / 01</span>
+          <h1>Don’t just watch.<br/><em>Read the moment.</em></h1>
+          <p>CrowdQuest turns decisive football events into short, free fan challenges. Make one call. See the verified result. Move with the match.</p>
+          <div className="intro-actions">
+            <Button className="primary-button intro-primary" onClick={onEnter}>Enter the match room <Icon name="arrow" /></Button>
+            <button className="editorial-link" onClick={onSignal}>Inspect TxLINE evidence <Icon name="arrow" /></button>
+          </div>
+          <p className="intro-note">No wallet. No stake. Sponsor-funded rewards remain approval-gated.</p>
+        </div>
+
+        <div className="intro-fixture" aria-label="Featured fixture">
+          <div className="fixture-heading">
+            <span>FEATURED FIXTURE</span>
+            <span className={`fixture-source source-${sourceState}`}><i /> {sourceCopy.label}</span>
+          </div>
+          <div className="fixture-teams">
+            <div><Image alt="France flag" height={40} src={`/flags/${match.home.flagCode}.svg`} width={40}/><span><b>{match.home.name}</b><small>{match.home.code}</small></span></div>
+            <strong>—</strong>
+            <div><Image alt="Morocco flag" height={40} src={`/flags/${match.away.flagCode}.svg`} width={40}/><span><b>{match.away.name}</b><small>{match.away.code}</small></span></div>
+          </div>
+          <div className="fixture-context">
+            <span><small>FORMAT</small><b>5 event-driven quests</b></span>
+            <span><small>SOURCE</small><b>TxLINE fixture {match.id}</b></span>
+            <span><small>ENTRY</small><b>Free</b></span>
+          </div>
+          <div className="fixture-rule"><Icon name="radio"/><span><b>{sourceCopy.title}</b><small>{sourceCopy.detail}</small></span></div>
+        </div>
+      </div>
+
+      <div className="intro-method">
+        <div className="method-heading"><span className="editorial-label">THE LOOP / 03 STEPS</span><h2>One decision at a time.</h2></div>
+        <div className="method-grid">
+          <article><span>01</span><Icon name="target"/><h3>Read the moment</h3><p>A quest opens from the current match state. Context stays short and specific.</p></article>
+          <article><span>02</span><Icon name="lock"/><h3>Lock one answer</h3><p>Your choice closes on the server timer. It cannot change after settlement.</p></article>
+          <article><span>03</span><Icon name="shield"/><h3>See the evidence</h3><p>TxLINE resolves the fact and records the source sequence behind the result.</p></article>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -844,7 +910,7 @@ function TraceView({
             {answers.length ? answers.map((answer, index) => (
               <div className="receipt-row" key={answer.questId}>
                 <span className={`receipt-icon ${answer.correct ? "pass" : "fail"}`}><Icon name={answer.correct ? "check" : "minus"} /></span>
-                <div><b>Quest #{index + 1} settled</b><small>Choice sealed before the next event</small></div>
+                <div><b>Quest #{index + 1} settled</b><small>{answer.source === "txline" ? `TxLINE sequence ${answer.sourceSequence ?? "recorded"}` : "Deterministic replay receipt"}</small></div>
                 <code>{answer.correct ? `+${answer.points}_points` : "settled"}</code>
               </div>
             )) : <div className="empty-receipt">Complete a quest to add its settlement receipt.</div>}
