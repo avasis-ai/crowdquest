@@ -36,9 +36,9 @@ export class TxLineClient {
 
   async historicalEvents(): Promise<MatchEvent[]> {
     if (!this.apiToken) return [];
-    const raw = await this.request(`/api/scores/historical/${this.fixtureId}`);
-    if (!Array.isArray(raw)) return [];
-    const events = raw.map((record) => normalizeScoreRecord(record, this.fixtureId)).filter((event): event is MatchEvent => Boolean(event));
+    const response = await this.requestResponse(`/api/scores/historical/${this.fixtureId}`, "text/event-stream, application/json");
+    const records = parseHistoricalPayload(await response.text(), response.headers.get("content-type"));
+    const events = records.map((record) => normalizeScoreRecord(record, this.fixtureId)).filter((event): event is MatchEvent => Boolean(event));
     this.mergeEvents(events);
     return events;
   }
@@ -184,32 +184,39 @@ export class TxLineClient {
   }
 
   private async request(path: string, retry = true): Promise<unknown> {
+    const response = await this.requestResponse(path, "application/json", retry);
+    return response.json();
+  }
+
+  private async requestResponse(path: string, accept: string, retry = true): Promise<Response> {
     if (!this.apiToken) throw new Error("TxLINE API token is not configured");
     const jwt = await this.guestJwt();
     const response = await fetch(`${this.origin}${path}`, {
-      headers: { Authorization: `Bearer ${jwt}`, "X-Api-Token": this.apiToken, Accept: "application/json" },
+      headers: { Authorization: `Bearer ${jwt}`, "X-Api-Token": this.apiToken, Accept: accept },
       signal: AbortSignal.timeout(15_000),
     });
     if (response.status === 401 && retry) {
       this.#jwt = null;
-      return this.request(path, false);
+      return this.requestResponse(path, accept, false);
     }
     if (!response.ok) throw new Error(`TxLINE ${path} failed with ${response.status}`);
-    return response.json();
+    return response;
   }
 }
 
 export function normalizeScoreRecord(input: unknown, fixtureId: number): MatchEvent | null {
-  if (!isObject(input) || Number(input.fixtureId) !== fixtureId) return null;
-  const score = isObject(input.scoreSoccer) ? input.scoreSoccer : {};
+  if (!isObject(input) || Number(input.FixtureId ?? input.fixtureId) !== fixtureId || input.Confirmed === false) return null;
+  const scoreValue = input.Score ?? input.ScoreSoccer ?? input.scoreSoccer;
+  const score = isObject(scoreValue) ? scoreValue : {};
   const p1 = nestedGoals(score, "Participant1");
   const p2 = nestedGoals(score, "Participant2");
-  const data = isObject(input.dataSoccer) ? input.dataSoccer : {};
-  const action = String(data.Action ?? input.action ?? "update").toLowerCase();
-  const minute = integer(data.Minutes) ?? minuteFromClock(input.clock) ?? 0;
+  const dataValue = input.Data ?? input.DataSoccer ?? input.dataSoccer;
+  const data = isObject(dataValue) ? dataValue : {};
+  const action = String(input.Action ?? data.Action ?? input.action ?? "update").toLowerCase();
+  const minute = integer(data.Minutes) ?? minuteFromClock(input.Clock ?? input.clock) ?? 0;
   const kind: MatchEvent["kind"] = action.includes("final") ? "final" : action.includes("goal") ? "goal" : action.includes("penalty") || action.includes("shot") ? "chance" : action.includes("half") ? "break" : "kickoff";
   return {
-    id: `txline-${integer(input.seq) ?? integer(input.id) ?? minute}`,
+    id: `txline-${integer(input.Seq ?? input.seq) ?? integer(input.Id ?? input.id) ?? minute}`,
     minute,
     minuteLabel: kind === "final" ? "FT" : kind === "break" ? "HT" : `${minute}′`,
     title: humanizeAction(action),
@@ -218,9 +225,26 @@ export function normalizeScoreRecord(input: unknown, fixtureId: number): MatchEv
     homeScore: p1,
     awayScore: p2,
     marketHome: 0,
-    txlineSeq: integer(input.seq),
+    txlineSeq: integer(input.Seq ?? input.seq),
     txlineAction: action,
   };
+}
+
+export function parseHistoricalPayload(body: string, contentType: string | null): unknown[] {
+  if (contentType?.toLowerCase().includes("text/event-stream") || body.trimStart().startsWith("data:")) {
+    return body.replaceAll("\r\n", "\n").split("\n\n").flatMap((frame) => {
+      const data = frame.split("\n").filter((line) => line.startsWith("data:"))
+        .map((line) => line.slice(5).trimStart()).join("\n");
+      if (!data) return [];
+      try { return [JSON.parse(data)]; } catch { return []; }
+    });
+  }
+  try {
+    const parsed = JSON.parse(body);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
 }
 
 function nestedGoals(score: JsonObject, participant: string) {
@@ -228,7 +252,7 @@ function nestedGoals(score: JsonObject, participant: string) {
   const total = isObject(value.Total) ? value.Total : {};
   return integer(total.Goals) ?? 0;
 }
-function minuteFromClock(value: unknown) { return isObject(value) ? Math.floor((integer(value.seconds) ?? 0) / 60) : undefined; }
+function minuteFromClock(value: unknown) { return isObject(value) ? Math.floor((integer(value.Seconds ?? value.seconds) ?? 0) / 60) : undefined; }
 function integer(value: unknown) { const number = Number(value); return Number.isInteger(number) ? number : undefined; }
 function isObject(value: unknown): value is JsonObject { return typeof value === "object" && value !== null && !Array.isArray(value); }
 function humanizeAction(action: string) { return action.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase()); }
